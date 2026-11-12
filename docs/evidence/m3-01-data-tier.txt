@@ -1,0 +1,646 @@
+=== M3-01: data tier (SQL, Key Vault) + private endpoints, 2026-11-12 16:27 ===
+lark-sql-admins members: D:\Development\larkspur-azure-platform>  "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\\..\python.exe" -IBm azure.cli ad group member list --group lark-sql-admins --query length(@) -o tsv (expect 1)
+--- lint infra\data\main.bicep ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+lint exit=0
+--- lint infra\app\main.bicep ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+lint exit=0
+--- what-if: data ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  + Create
+  = Nochange
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  + Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws [2023-07-01]
+
+      apiVersion:                           "2023-07-01"
+      id:                                   "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws"
+      location:                             "eastus"
+      name:                                 "kv-lark-iqlx77ptc36ws"
+      properties.enablePurgeProtection:     true
+      properties.enableRbacAuthorization:   true
+      properties.enableSoftDelete:          true
+      properties.networkAcls.bypass:        "None"
+      properties.networkAcls.defaultAction: "Deny"
+      properties.publicNetworkAccess:       "Disabled"
+      properties.sku.family:                "A"
+      properties.sku.name:                  "standard"
+      properties.softDeleteRetentionInDays: 7
+      properties.tenantId:                  "<guid>"
+      tags.company:                         "Larkspur Logistics (fictional)"
+      tags.costCenter:                      "CC-LARK-01"
+      tags.environment:                     "lab"
+      tags.owner:                           "platform"
+      tags.project:                         "larkspur-azure-platform"
+      type:                                 "Microsoft.KeyVault/vaults"
+
+  + Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws/providers/Microsoft.Authorization/locks/lock-kv-lark-iqlx77ptc36ws [2020-05-01]
+
+      apiVersion:       "2020-05-01"
+      id:               "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws/providers/Microsoft.Authorization/locks/lock-kv-lark-iqlx77ptc36ws"
+      name:             "lock-kv-lark-iqlx77ptc36ws"
+      properties.level: "CanNotDelete"
+      properties.notes: "Larkspur application secrets. Remove only through a planned change (see docs/plan.md)."
+      type:             "Microsoft.Authorization/locks"
+
+  + Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws [2023-08-01]
+
+      apiVersion:                                          "2023-08-01"
+      id:                                                  "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws"
+      location:                                            "eastus"
+      name:                                                "sql-lark-iqlx77ptc36ws"
+      properties.administrators.administratorType:         "ActiveDirectory"
+      properties.administrators.azureADOnlyAuthentication: true
+      properties.administrators.login:                     "*******"
+      properties.administrators.principalType:             "Group"
+      properties.administrators.sid:                       "<guid>"
+      properties.administrators.tenantId:                  "<guid>"
+      properties.minimalTlsVersion:                        "1.2"
+      properties.publicNetworkAccess:                      "Disabled"
+      tags.company:                                        "Larkspur Logistics (fictional)"
+      tags.costCenter:                                     "CC-LARK-01"
+      tags.environment:                                    "lab"
+      tags.owner:                                          "platform"
+      tags.project:                                        "larkspur-azure-platform"
+      type:                                                "Microsoft.Sql/servers"
+
+  + Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws/databases/sqldb-lark-tracking [2023-08-01]
+
+      apiVersion:                                  "2023-08-01"
+      id:                                          "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws/databases/sqldb-lark-tracking"
+      location:                                    "eastus"
+      name:                                        "sqldb-lark-tracking"
+      properties.createMode:                       "Default"
+      properties.freeLimitExhaustionBehavior:      "AutoPause"
+      properties.maxSizeBytes:                     34359738368
+      properties.requestedBackupStorageRedundancy: "Local"
+      properties.useFreeLimit:                     true
+      sku.family:                                  "Gen5"
+      sku.name:                                    "GP_S_Gen5"
+      tags.company:                                "Larkspur Logistics (fictional)"
+      tags.costCenter:                             "CC-LARK-01"
+      tags.environment:                            "lab"
+      tags.owner:                                  "platform"
+      tags.project:                                "larkspur-azure-platform"
+      type:                                        "Microsoft.Sql/servers/databases"
+
+  + Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws/providers/Microsoft.Authorization/locks/lock-sql-lark-iqlx77ptc36ws [2020-05-01]
+
+      apiVersion:       "2020-05-01"
+      id:               "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws/providers/Microsoft.Authorization/locks/lock-sql-lark-iqlx77ptc36ws"
+      name:             "lock-sql-lark-iqlx77ptc36ws"
+      properties.level: "CanNotDelete"
+      properties.notes: "Larkspur shipment data. Remove only through a planned change (see docs/plan.md)."
+      type:             "Microsoft.Authorization/locks"
+
+  = Microsoft.Network/privateDnsZones/privatelink.database.windows.net [2020-06-01]
+  = Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net [2020-06-01]
+
+Resource changes: 5 to create, 2 no change.
+
+--- deploy: data (SQL server takes a few minutes) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+ERROR: {"status":"Failed","error":{"code":"DeploymentFailed","target":"/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Resources/deployments/lark-data","message":"At least one resource deployment operation failed. Please list deployment operations for details. Please see https://aka.ms/arm-deployment-operations for usage details. Correlation ID: <guid>","details":[{"code":"ResourceDeploymentFailure","target":"/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Resources/deployments/lark-sql","message":"The resource write operation failed to complete successfully, because it reached terminal provisioning state 'Failed'.","details":[{"code":"DeploymentFailed","target":"/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Resources/deployments/lark-sql","message":"At least one resource deployment operation failed. Please list deployment operations for details. Please see https://aka.ms/arm-deployment-operations for usage details. Correlation ID: <guid>","details":[{"code":"ResourceDeploymentFailure","target":"/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws","message":"The resource write operation failed to complete successfully, because it reached terminal provisioning state 'Failed'.","details":[{"code":"RegionDoesNotAllowProvisioning","message":"Location 'East US' is not accepting creation of new Windows Azure SQL Database servers at this time."}]}]}]}]}}
+
+outputs: sql= fqdn= db= kv=
+--- state: SQL server ---
+ERROR: argument --name/-n: expected one argument
+
+https://aka.ms/cli_ref
+Read more about the command in reference docs
+
+--- state: database ---
+ERROR: argument --server/-s: expected one argument
+
+Examples from command's help:
+az sql db show --name MyAzureSQLDatabase --resource-group MyResourceGroup --server myserver
+Get the details for a database. (autogenerated)
+
+https://aka.ms/cli_ref
+Read more about the command in reference docs
+
+--- state: Key Vault ---
+ERROR: argument --name/-n: expected one argument
+
+Examples from command's help:
+az keyvault show --name MyKeyVault
+Show details of a key vault. (autogenerated)
+
+https://aka.ms/cli_ref
+Read more about the command in reference docs
+
+--- state: locks ---
+Lock                        Level
+--------------------------  ------------
+lock-kv-lark-iqlx77ptc36ws  CanNotDelete
+
+--- what-if: app ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  + Create
+  * Ignore
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  + Microsoft.Network/networkSecurityGroups/nsg-lark-aca [2024-05-01]
+
+      apiVersion:       "2024-05-01"
+      id:               "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/networkSecurityGroups/nsg-lark-aca"
+      location:         "eastus"
+      name:             "nsg-lark-aca"
+      properties.securityRules: [
+        0:
+
+          name:                                "Allow-AzureLoadBalancer-Probes"
+          properties.access:                   "Allow"
+          properties.description:              "Azure Load Balancer health probes to the environment nodes"
+          properties.destinationAddressPrefix: "10.60.0.0/27"
+          properties.destinationPortRange:     "30000-32767"
+          properties.direction:                "Inbound"
+          properties.priority:                 100
+          properties.protocol:                 "Tcp"
+          properties.sourceAddressPrefix:      "AzureLoadBalancer"
+          properties.sourcePortRange:          "*"
+
+        1:
+
+          name:                                "Allow-Intra-Subnet"
+          properties.access:                   "Allow"
+          properties.description:              "Container Apps infrastructure traffic between IPs in the environment subnet"
+          properties.destinationAddressPrefix: "10.60.0.0/27"
+          properties.destinationPortRange:     "*"
+          properties.direction:                "Inbound"
+          properties.priority:                 110
+          properties.protocol:                 "*"
+          properties.sourceAddressPrefix:      "10.60.0.0/27"
+          properties.sourcePortRange:          "*"
+
+        2:
+
+          name:                                "Allow-Web-From-Internet"
+          properties.access:                   "Allow"
+          properties.description:              "Public shipment-tracking API: HTTP/HTTPS and the environment edge proxy ports"
+          properties.destinationAddressPrefix: "10.60.0.0/27"
+          properties.destinationPortRanges: [
+            0: "80"
+            1: "443"
+            2: "31080"
+            3: "31443"
+          ]
+          properties.direction:                "Inbound"
+          properties.priority:                 120
+          properties.protocol:                 "Tcp"
+          properties.sourceAddressPrefix:      "Internet"
+          properties.sourcePortRange:          "*"
+
+        3:
+
+          name:                                "Deny-VNet-Inbound"
+          properties.access:                   "Deny"
+          properties.description:              "Override the default AllowVnetInBound: nothing else in (or connected to) the VNet gets in"
+          properties.destinationAddressPrefix: "*"
+          properties.destinationPortRange:     "*"
+          properties.direction:                "Inbound"
+          properties.priority:                 4000
+          properties.protocol:                 "*"
+          properties.sourceAddressPrefix:      "VirtualNetwork"
+          properties.sourcePortRange:          "*"
+
+      ]
+      tags.company:     "Larkspur Logistics (fictional)"
+      tags.costCenter:  "CC-LARK-01"
+      tags.environment: "lab"
+      tags.owner:       "platform"
+      tags.project:     "larkspur-azure-platform"
+      type:             "Microsoft.Network/networkSecurityGroups"
+
+  + Microsoft.Network/networkSecurityGroups/nsg-lark-pe [2024-05-01]
+
+      apiVersion:       "2024-05-01"
+      id:               "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/networkSecurityGroups/nsg-lark-pe"
+      location:         "eastus"
+      name:             "nsg-lark-pe"
+      properties.securityRules: [
+        0:
+
+          name:                                "Allow-HTTPS-From-App"
+          properties.access:                   "Allow"
+          properties.description:              "tracking-api to the Key Vault private endpoint"
+          properties.destinationAddressPrefix: "10.60.1.0/27"
+          properties.destinationPortRange:     "443"
+          properties.direction:                "Inbound"
+          properties.priority:                 110
+          properties.protocol:                 "Tcp"
+          properties.sourceAddressPrefix:      "10.60.0.0/27"
+          properties.sourcePortRange:          "*"
+
+        1:
+
+          name:                                "Allow-SQL-From-App"
+          properties.access:                   "Allow"
+          properties.description:              "tracking-api to the Azure SQL private endpoint"
+          properties.destinationAddressPrefix: "10.60.1.0/27"
+          properties.destinationPortRange:     "1433"
+          properties.direction:                "Inbound"
+          properties.priority:                 100
+          properties.protocol:                 "Tcp"
+          properties.sourceAddressPrefix:      "10.60.0.0/27"
+          properties.sourcePortRange:          "*"
+
+        2:
+
+          name:                                "Deny-VNet-Inbound"
+          properties.access:                   "Deny"
+          properties.description:              "Override the default AllowVnetInBound: only the app subnet reaches the private endpoints"
+          properties.destinationAddressPrefix: "*"
+          properties.destinationPortRange:     "*"
+          properties.direction:                "Inbound"
+          properties.priority:                 4000
+          properties.protocol:                 "*"
+          properties.sourceAddressPrefix:      "VirtualNetwork"
+          properties.sourcePortRange:          "*"
+
+      ]
+      tags.company:     "Larkspur Logistics (fictional)"
+      tags.costCenter:  "CC-LARK-01"
+      tags.environment: "lab"
+      tags.owner:       "platform"
+      tags.project:     "larkspur-azure-platform"
+      type:             "Microsoft.Network/networkSecurityGroups"
+
+  + Microsoft.Network/privateEndpoints/pe-lark-kv [2024-05-01]
+
+      apiVersion:                            "2024-05-01"
+      id:                                    "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-kv"
+      location:                              "eastus"
+      name:                                  "pe-lark-kv"
+      properties.customNetworkInterfaceName: "nic-pe-lark-kv"
+      properties.privateLinkServiceConnections: [
+        0:
+
+          name:                            "pe-lark-kv"
+          properties.groupIds: [
+            0: "vault"
+          ]
+          properties.privateLinkServiceId: "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws"
+
+      ]
+      properties.subnet.id:                  "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/virtualNetworks/vnet-lark/subnets/snet-pe"
+      tags.company:                          "Larkspur Logistics (fictional)"
+      tags.costCenter:                       "CC-LARK-01"
+      tags.environment:                      "lab"
+      tags.owner:                            "platform"
+      tags.project:                          "larkspur-azure-platform"
+      type:                                  "Microsoft.Network/privateEndpoints"
+
+  + Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default [2024-05-01]
+
+      apiVersion:  "2024-05-01"
+      id:          "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default"
+      name:        "default"
+      properties.privateDnsZoneConfigs: [
+        0:
+
+          name:                        "privatelink-vaultcore-azure-net"
+          properties.privateDnsZoneId: "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net"
+
+      ]
+      type:        "Microsoft.Network/privateEndpoints/privateDnsZoneGroups"
+
+  + Microsoft.Network/privateEndpoints/pe-lark-sql [2024-05-01]
+
+      apiVersion:                            "2024-05-01"
+      id:                                    "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-sql"
+      location:                              "eastus"
+      name:                                  "pe-lark-sql"
+      properties.customNetworkInterfaceName: "nic-pe-lark-sql"
+      properties.privateLinkServiceConnections: [
+        0:
+
+          name:                            "pe-lark-sql"
+          properties.groupIds: [
+            0: "sqlServer"
+          ]
+          properties.privateLinkServiceId: "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws"
+
+      ]
+      properties.subnet.id:                  "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/virtualNetworks/vnet-lark/subnets/snet-pe"
+      tags.company:                          "Larkspur Logistics (fictional)"
+      tags.costCenter:                       "CC-LARK-01"
+      tags.environment:                      "lab"
+      tags.owner:                            "platform"
+      tags.project:                          "larkspur-azure-platform"
+      type:                                  "Microsoft.Network/privateEndpoints"
+
+  + Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default [2024-05-01]
+
+      apiVersion:  "2024-05-01"
+      id:          "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default"
+      name:        "default"
+      properties.privateDnsZoneConfigs: [
+        0:
+
+          name:                        "privatelink-database-windows-net"
+          properties.privateDnsZoneId: "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net"
+
+      ]
+      type:        "Microsoft.Network/privateEndpoints/privateDnsZoneGroups"
+
+  + Microsoft.Network/virtualNetworks/vnet-lark [2024-05-01]
+
+      apiVersion:                             "2024-05-01"
+      id:                                     "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/virtualNetworks/vnet-lark"
+      location:                               "eastus"
+      name:                                   "vnet-lark"
+      properties.addressSpace.addressPrefixes: [
+        0: "10.60.0.0/16"
+      ]
+      properties.privateEndpointVNetPolicies: "Disabled"
+      properties.subnets: [
+        0:
+
+          name:                               "snet-aca"
+          properties.addressPrefix:           "10.60.0.0/27"
+          properties.defaultOutboundAccess:   false
+          properties.delegations: [
+            0:
+
+              name:                   "Microsoft.App.environments"
+              properties.serviceName: "Microsoft.App/environments"
+
+          ]
+          properties.networkSecurityGroup.id: "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/networkSecurityGroups/nsg-lark-aca"
+
+        1:
+
+          name:                                      "snet-pe"
+          properties.addressPrefix:                  "10.60.1.0/27"
+          properties.defaultOutboundAccess:          false
+          properties.networkSecurityGroup.id:        "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/networkSecurityGroups/nsg-lark-pe"
+          properties.privateEndpointNetworkPolicies: "NetworkSecurityGroupEnabled"
+
+      ]
+      tags.company:                           "Larkspur Logistics (fictional)"
+      tags.costCenter:                        "CC-LARK-01"
+      tags.environment:                       "lab"
+      tags.owner:                             "platform"
+      tags.project:                           "larkspur-azure-platform"
+      type:                                   "Microsoft.Network/virtualNetworks"
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  + Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+
+      apiVersion:                     "2020-06-01"
+      id:                             "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark"
+      location:                       "global"
+      name:                           "link-vnet-lark"
+      properties.registrationEnabled: false
+      properties.virtualNetwork.id:   "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/virtualNetworks/vnet-lark"
+      tags.company:                   "Larkspur Logistics (fictional)"
+      tags.costCenter:                "CC-LARK-01"
+      tags.environment:               "lab"
+      tags.owner:                     "platform"
+      tags.project:                   "larkspur-azure-platform"
+      type:                           "Microsoft.Network/privateDnsZones/virtualNetworkLinks"
+
+  + Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+
+      apiVersion:                     "2020-06-01"
+      id:                             "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark"
+      location:                       "global"
+      name:                           "link-vnet-lark"
+      properties.registrationEnabled: false
+      properties.virtualNetwork.id:   "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/virtualNetworks/vnet-lark"
+      tags.company:                   "Larkspur Logistics (fictional)"
+      tags.costCenter:                "CC-LARK-01"
+      tags.environment:               "lab"
+      tags.owner:                     "platform"
+      tags.project:                   "larkspur-azure-platform"
+      type:                           "Microsoft.Network/privateDnsZones/virtualNetworkLinks"
+
+  * Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net
+
+Resource changes: 9 to create, 3 to ignore.
+
+--- deploy: app ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+ERROR: {"status":"Failed","error":{"code":"DeploymentFailed","target":"/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Resources/deployments/lark-app","message":"At least one resource deployment operation failed. Please list deployment operations for details. Please see https://aka.ms/arm-deployment-operations for usage details. Correlation ID: <guid>","details":[{"code":"ResourceDeploymentFailure","target":"/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Resources/deployments/lark-private-endpoints","message":"The resource write operation failed to complete successfully, because it reached terminal provisioning state 'Failed'.","details":[{"code":"DeploymentFailed","target":"/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Resources/deployments/lark-private-endpoints","message":"At least one resource deployment operation failed. Please list deployment operations for details. Please see https://aka.ms/arm-deployment-operations for usage details. Correlation ID: <guid>","details":[{"code":"ResourceDeploymentFailure","target":"/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-sql","message":"The resource write operation failed to complete successfully, because it reached terminal provisioning state 'Failed'.","details":[{"code":"SubscriptionDoesNotHaveServer","message":"Call to Microsoft.Sql/servers failed. Error message: Subscription '<guid>' does not have the server 'sql-lark-iqlx77ptc36ws'. Please make sure that the subscription and server name are entered correctly. Please contact Microsoft support if further assistance is needed.","details":[]}]}]}]}]}}
+
+--- private endpoints ---
+Endpoint     Connection    GroupId    CostCenter
+-----------  ------------  ---------  ------------
+pe-lark-kv   Approved      vault      CC-LARK-01
+pe-lark-sql  Approved      sqlServer  CC-LARK-01
+
+Nic              PrivateIp    CostCenter
+---------------  -----------  ------------
+nic-pe-lark-kv   10.60.1.4    CC-LARK-01
+nic-pe-lark-sql  10.60.1.5    CC-LARK-01
+
+--- A records in privatelink.database.windows.net ---
+
+
+--- A records in privatelink.vaultcore.azure.net ---
+Record                 Ip
+---------------------  ---------
+kv-lark-iqlx77ptc36ws  10.60.1.4
+
+--- public DNS for the SQL name (resolves, by design) ---
+--- SQL connection from this PC (expect refusal: public network access denied) ---
+refused: A network-related or instance-specific error occurred while establishing a connection to SQL Server. The server was not found or was not accessible. Verify that the instance name is correct and that SQL Server is configured to allow remote connections. (provider: SQL Network Interfaces, error: 25 - Connection string is not valid)
+--- Key Vault data plane from this PC (expect ForbiddenByConnection) ---
+ERROR: argument --vault-name: expected one argument
+
+https://aka.ms/cli_ref
+Read more about the command in reference docs
+
+--- policy: try to re-enable SQL public access (expect RequestDisallowedByPolicy) ---
+ERROR: argument --name/-n: expected one argument
+
+Examples from command's help:
+az sql server update --admin-password myadminpassword --name MyAzureSQLServer --resource-group MyResourceGroup
+Update a server. (autogenerated)
+
+az sql server update --name MyAzureSQLServer --resource-group MyResourceGroup --soft-delete-retention-days 7
+Enable soft delete protection with 7-day retention.
+
+az sql server update -n MyAzureSQLServer -g MyResourceGroup --sdrd 3
+Modify soft delete retention period (using short alias).
+
+https://aka.ms/cli_ref
+Read more about the command in reference docs
+
+publicNetworkAccess after attempt: 
+SAFETY: public access was re-disabled
+--- lock: try to delete the Key Vault (expect ScopeLocked) ---
+ERROR: argument --name/-n: expected one argument
+
+Examples from command's help:
+az keyvault delete --name MyKeyVault --resource-group MyResourceGroup
+Delete a key vault. (autogenerated)
+
+https://aka.ms/cli_ref
+Read more about the command in reference docs
+
+vault still present: False
+SAFETY: vault recovered from soft delete
+--- what-if again: data ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  + Create
+  = Nochange
+  * Ignore
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  + Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws [2023-08-01]
+
+      apiVersion:                                          "2023-08-01"
+      id:                                                  "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws"
+      location:                                            "eastus"
+      name:                                                "sql-lark-iqlx77ptc36ws"
+      properties.administrators.administratorType:         "ActiveDirectory"
+      properties.administrators.azureADOnlyAuthentication: true
+      properties.administrators.login:                     "*******"
+      properties.administrators.principalType:             "Group"
+      properties.administrators.sid:                       "<guid>"
+      properties.administrators.tenantId:                  "<guid>"
+      properties.minimalTlsVersion:                        "1.2"
+      properties.publicNetworkAccess:                      "Disabled"
+      tags.company:                                        "Larkspur Logistics (fictional)"
+      tags.costCenter:                                     "CC-LARK-01"
+      tags.environment:                                    "lab"
+      tags.owner:                                          "platform"
+      tags.project:                                        "larkspur-azure-platform"
+      type:                                                "Microsoft.Sql/servers"
+
+  + Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws/databases/sqldb-lark-tracking [2023-08-01]
+
+      apiVersion:                                  "2023-08-01"
+      id:                                          "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws/databases/sqldb-lark-tracking"
+      location:                                    "eastus"
+      name:                                        "sqldb-lark-tracking"
+      properties.createMode:                       "Default"
+      properties.freeLimitExhaustionBehavior:      "AutoPause"
+      properties.maxSizeBytes:                     34359738368
+      properties.requestedBackupStorageRedundancy: "Local"
+      properties.useFreeLimit:                     true
+      sku.family:                                  "Gen5"
+      sku.name:                                    "GP_S_Gen5"
+      tags.company:                                "Larkspur Logistics (fictional)"
+      tags.costCenter:                             "CC-LARK-01"
+      tags.environment:                            "lab"
+      tags.owner:                                  "platform"
+      tags.project:                                "larkspur-azure-platform"
+      type:                                        "Microsoft.Sql/servers/databases"
+
+  + Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws/providers/Microsoft.Authorization/locks/lock-sql-lark-iqlx77ptc36ws [2020-05-01]
+
+      apiVersion:       "2020-05-01"
+      id:               "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-iqlx77ptc36ws/providers/Microsoft.Authorization/locks/lock-sql-lark-iqlx77ptc36ws"
+      name:             "lock-sql-lark-iqlx77ptc36ws"
+      properties.level: "CanNotDelete"
+      properties.notes: "Larkspur shipment data. Remove only through a planned change (see docs/plan.md)."
+      type:             "Microsoft.Authorization/locks"
+
+  = Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws [2023-07-01]
+  = Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws/providers/Microsoft.Authorization/locks/lock-kv-lark-iqlx77ptc36ws [2020-05-01]
+  = Microsoft.Network/privateDnsZones/privatelink.database.windows.net [2020-06-01]
+  = Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net [2020-06-01]
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark
+
+Resource changes: 3 to create, 4 no change, 2 to ignore.
+
+--- what-if again: app ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  - Delete
+  + Create
+  ~ Modify
+  = Nochange
+  * Ignore
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  + Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default [2024-05-01]
+
+      apiVersion:  "2024-05-01"
+      id:          "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default"
+      name:        "default"
+      properties.privateDnsZoneConfigs: [
+        0:
+
+          name:                        "privatelink-database-windows-net"
+          properties.privateDnsZoneId: "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net"
+
+      ]
+      type:        "Microsoft.Network/privateEndpoints/privateDnsZoneGroups"
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-kv [2024-05-01]
+    - properties.isIPv6EnabledPrivateEndpoint: false
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default [2024-05-01]
+    ~ properties.privateDnsZoneConfigs: [
+      ~ 0:
+
+        - etag:                         "W/"<guid>""
+        - id:                           "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default/privateDnsZoneConfigs/privatelink-vaultcore-azure-net"
+        - properties.provisioningState: "Succeeded"
+        - type:                         "Microsoft.Network/privateEndpoints/privateDnsZoneGroups/privateDnsZoneConfigs"
+
+      ]
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-sql [2024-05-01]
+    - properties.isIPv6EnabledPrivateEndpoint: false
+
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-aca [2024-05-01]
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-pe [2024-05-01]
+  = Microsoft.Network/virtualNetworks/vnet-lark [2024-05-01]
+  * Microsoft.Network/networkInterfaces/nic-pe-lark-kv
+  * Microsoft.Network/networkInterfaces/nic-pe-lark-sql
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  = Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  = Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  * Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net
+
+Resource changes: 1 to create, 3 to modify, 5 no change, 5 to ignore.
+

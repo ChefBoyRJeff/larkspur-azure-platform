@@ -77,8 +77,8 @@ Every milestone includes portal work as well as Bicep/CLI, and saves sanitized e
 | M0 | Prerequisites | Repo created; providers registered; existing policy assignments/exemptions reviewed; prices captured; budget deployed and what-if NoChange |
 | M1 | Governance | Resource groups created from Bicep with tags; policy assignments at resource-group scope (require `costCenter` tag, allowed locations, SQL public network access denied in rg-lark-data); Entra groups `lark-ops` / `lark-dev` created in the portal with least-privilege RBAC; untagged and wrong-region deployments denied, compliant one allowed; second what-if NoChange |
 | M2 | Network | Private DNS zones (rg-lark-data) and vnet-lark with snet-aca, snet-pe and NSGs (rg-lark-app) deployed from Bicep; zones linked to the VNet; NSG enforcement enabled for private endpoints; second what-if NoChange; teardown script empties rg-lark-app and removes the links |
-| M3 | Data and secrets | SQL free database with Entra-only auth + PE; Key Vault + PE; `CanNotDelete` locks on the SQL server and Key Vault; `nslookup` from inside the VNet resolves to private IPs; public access is refused; private endpoint cost read from Cost Analysis |
-| M4 | App | Image built by GitHub Actions and pushed to GHCR; Container App reads shipments from SQL with its managed identity; Cost Analysis shows no Container Apps management-hour charge |
+| M3 | Data and secrets | SQL server (Entra-only auth, admin = `lark-sql-admins` group, public access disabled) with a free-tier database; Key Vault (RBAC, public access disabled, soft delete + purge protection); `CanNotDelete` lock on the database; private endpoints in snet-pe with DNS zone groups writing private A records; from outside the VNet SQL and Key Vault refuse connections; the M1 policy denies re-enabling SQL public access; the lock blocks deleting the database; teardown deletes the private endpoints with the protection in place; second what-if NoChange. Private endpoint cost confirmed in Cost Analysis (cost data lags about a day) |
+| M4 | App | Image built by GitHub Actions and pushed to GHCR; Container App reads shipments from SQL with its managed identity; from inside the VNet both data-tier names resolve to 10.60.1.x; app can pull its image and reach Entra ID from the private subnet; Cost Analysis shows no Container Apps management-hour charge |
 | M5 | CI/CD | PR runs lint + what-if; merge to main waits for approval, deploys, verifies, and passes an idempotency check |
 | M6 | Observability | Diagnostic settings; alerts on HTTP 5xx, SQL "Free amount remaining" < 10,000 vCore-seconds, and budget; a workbook |
 | M7 | Recovery | SQL point-in-time restore with measured RTO/RPO; Key Vault secret soft-delete recovery; Container App revision rollback |
@@ -138,6 +138,11 @@ in Cost Analysis.
 | M1 | `CanNotDelete` lock moved from the whole rg-lark-data group to the SQL server and Key Vault (M3) | A group lock also locks child resources, so it would block deleting the private DNS zone VNet links during per-session teardown |
 | M1 | Policies assigned at resource-group scope | The subscription hosts my other projects; a subscription-wide tag requirement would deny their redeployments |
 | M2 | rg-lark-app kept; only its contents are torn down | Deleting the group would delete its M1 policy and RBAC assignments, and recreating those needs rights the pipeline shouldn't have |
+| M3 | In-VNet DNS resolution check moved from M3 to M4 | Nothing runs inside the VNet until the Container Apps environment exists; M3 proves the private A records and the public-side refusal instead |
+| M3 | SQL admin is a dedicated `lark-sql-admins` group, not `lark-ops` | Ops manages alerts and workbooks without data access (M1); database administration is a separate, smaller group |
+| M3 | SQL server in East US 2; everything else stays in East US (INC-001) | East US stopped accepting new SQL servers for this subscription. The private endpoint stays in vnet-lark and connects across regions; `rg-lark-data` alone allows `eastus2` |
+| M3 | SQL server name includes the region in its hash (INC-001) | Resource Manager kept the failed East US server's name reserved for that region |
+| M3 | Lock moved from SQL server to database; Key Vault lock removed (INC-002) | A lock also covers the private endpoint connection records Azure deletes with each endpoint, so it blocked teardown. The database lock still protects the data; Key Vault relies on soft delete + purge protection |
 
 ## Teardown
 

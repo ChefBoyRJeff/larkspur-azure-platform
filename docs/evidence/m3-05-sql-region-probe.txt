@@ -1,0 +1,20 @@
+=== M3-05: SQL server capability probe, US regions (read-only), 11-12-2026 16:47 EST ===
+
+region         status    generalPurpose reason
+------         ------    -------------- ------
+eastus         Visible   Visible        Provisioning is restricted in this region. Please choose a different region. For exceptions to this rule please open a support request with Issue type of 'Service and subscription limits'. See
+                                        https://docs.microsoft.com/en-us/azure/sql-database/quota-increase-request for more details.
+eastus2        Visible   Visible        Provisioning is restricted in this region. Please choose a different region. For exceptions to this rule please open a support request with Issue type of 'Service and subscription limits'. See
+                                        https://docs.microsoft.com/en-us/azure/sql-database/quota-increase-request for more details.
+centralus      Available Default        
+northcentralus Visible   Visible        Provisioning is restricted in this region. Please choose a different region. For exceptions to this rule please open a support request with Issue type of 'Service and subscription limits'. See
+                                        https://docs.microsoft.com/en-us/azure/sql-database/quota-increase-request for more details.
+southcentralus Available Default        
+westcentralus  Available Default        
+westus         Visible   Visible        Provisioning is restricted in this region. Please choose a different region. For exceptions to this rule please open a support request with Issue type of 'Service and subscription limits'. See
+                                        https://docs.microsoft.com/en-us/azure/sql-database/quota-increase-request for more details.
+westus2        Visible   Visible        Provisioning is restricted in this region. Please choose a different region. For exceptions to this rule please open a support request with Issue type of 'Service and subscription limits'. See
+                                        https://docs.microsoft.com/en-us/azure/sql-database/quota-increase-request for more details.
+westus3        Available Available      
+
+

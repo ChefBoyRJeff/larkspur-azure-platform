@@ -1,0 +1,115 @@
+=== M3-02: SQL region incident fix + data tier + private endpoints, 2026-11-12 16:34 ===
+--- inventory before fix ---
+Name                                             Location
+-----------------------------------------------  ----------
+privatelink.database.windows.net                 global
+privatelink.vaultcore.azure.net                  global
+kv-lark-iqlx77ptc36ws                            eastus
+privatelink.database.windows.net/link-vnet-lark  global
+privatelink.vaultcore.azure.net/link-vnet-lark   global
+
+Name
+---------------
+nsg-lark-pe
+nsg-lark-aca
+vnet-lark
+pe-lark-kv
+pe-lark-sql
+nic-pe-lark-kv
+nic-pe-lark-sql
+
+--- lint governance (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+--- what-if governance (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  + Create
+  ~ Modify
+  = Nochange
+  * Ignore
+  x Noeffect
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>
+
+  = resourceGroups/rg-lark-app [2024-03-01]
+  = resourceGroups/rg-lark-data [2024-03-01]
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  = Microsoft.Authorization/policyAssignments/lark-allowed-locations [2024-04-01]
+  = Microsoft.Authorization/policyAssignments/lark-require-costcenter [2024-04-01]
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+  * Microsoft.Network/networkInterfaces/nic-pe-lark-kv
+  * Microsoft.Network/networkInterfaces/nic-pe-lark-sql
+  * Microsoft.Network/networkSecurityGroups/nsg-lark-aca
+  * Microsoft.Network/networkSecurityGroups/nsg-lark-pe
+  * Microsoft.Network/privateEndpoints/pe-lark-kv
+  * Microsoft.Network/privateEndpoints/pe-lark-sql
+  * Microsoft.Network/virtualNetworks/vnet-lark
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  ~ Microsoft.Authorization/policyAssignments/lark-allowed-locations [2024-04-01]
+    ~ properties.nonComplianceMessages: [
+      ~ 0:
+
+        ~ message: "Larkspur resources must be deployed to: eastus." => "Larkspur resources must be deployed to: eastus, eastus2."
+
+      ]
+    ~ properties.parameters.listOfAllowedLocations.value: [
+      + 1: "eastus2"
+      ]
+
+  = Microsoft.Authorization/policyAssignments/lark-deny-sql-public-access [2024-04-01]
+  = Microsoft.Authorization/policyAssignments/lark-require-costcenter [2024-04-01]
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+  * Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark
+
+Resource changes: 1 to modify, 10 no change, 12 to ignore.
+
+--- deploy governance (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded"
+}
+
+--- allowed locations now (exit 0) ---
+[
+  [
+    "eastus",
+    "eastus2"
+  ]
+]
+
+lark-sql-admins members: 1 (expect 1)
+--- lint data (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+--- deploy data (exit 1) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+ERROR: {"code": "InvalidResourceLocation", "message": "The resource 'sql-lark-iqlx77ptc36ws' already exists in location 'eastus' in resource group 'rg-lark-data'. A resource with the same name cannot be created in location 'eastus2'. Please select a new resource name."}
+
+BLOCK STOPPED: deploy data failed - see evidence file

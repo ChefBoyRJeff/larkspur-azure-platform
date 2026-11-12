@@ -10,4 +10,5 @@ param tags = {
 param vnetAddressPrefix = '10.60.0.0/16'
 param acaSubnetPrefix = '10.60.0.0/27'
 param peSubnetPrefix = '10.60.1.0/27'
-param dnsZoneResourceGroupName = 'rg-lark-data'
+param dataResourceGroupName = 'rg-lark-data'
+param sqlLocation = 'eastus2'

@@ -55,7 +55,9 @@ $deleteOrder = @(
     'Microsoft.ManagedIdentity/userAssignedIdentities'
 )
 
-Write-Host "=== Teardown: $AppResourceGroup (links in $DnsResourceGroup), $(Get-Date -Format 'yyyy-MM-dd HH:mm') ==="
+# Timestamps are Eastern time, MM-DD-YYYY HH:MM (project convention).
+$eastern = [TimeZoneInfo]::ConvertTimeBySystemTimeZoneId((Get-Date), 'Eastern Standard Time')
+Write-Host "=== Teardown: $AppResourceGroup (links in $DnsResourceGroup), $($eastern.ToString('MM-dd-yyyy HH:mm')) EST ==="
 
 # 1. DNS zone links that belong to this stack.
 $zones = Invoke-Az @('network', 'private-dns', 'zone', 'list', '--resource-group', $DnsResourceGroup, '--query', '[].name', '-o', 'tsv')
