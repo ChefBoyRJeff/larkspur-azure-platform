@@ -1,0 +1,45 @@
+=== M0-03: East US retail prices (pay-as-you-go), 2026-11-12 ===
+--- Container Apps (consumption + management hour we must avoid) ---
+Azure Container Apps                                    Dedicated Plan Management                            0.1 USD/1 Hour
+Azure Container Apps                                    Environment Management Hour                          0.1 USD/1 Hour
+Azure Container Apps                                    Environment Private Endpoint                         0.1 USD/1 Hour
+Azure Container Apps                                    Standard Memory Active Usage                       3E-06 USD/1 GiB Second
+Azure Container Apps                                    Standard Memory Idle Usage                         3E-06 USD/1 GiB Second
+Azure Container Apps                                    Standard Requests                                    0.4 USD/1M
+Azure Container Apps                                    Standard vCPU Active Usage                       2.4E-05 USD/1 Second
+Azure Container Apps                                    Standard vCPU Idle Usage                           3E-06 USD/1 Second
+--- Private endpoint ---
+--- SQL Database serverless General Purpose (applies only beyond the free tier / to the M7 restore copy) ---
+--- Key Vault (Standard operations) ---
+Key Vault                                               Operations                                          0.03 USD/10K
+Key Vault                                               Advanced Key Operations                             0.15 USD/10K
+Key Vault                                               Operations                                          0.03 USD/10K
+Key Vault                                               Advanced Key Operations                             0.15 USD/10K
+--- Private DNS ---
+Azure DNS                                               Private Queries                                      0.4 USD/1M
+Azure DNS                                               Private Record Set                               0.00187 USD/1
+Azure DNS                                               Private Resolver DNS Forwarding Ruleset              2.5 USD/1
+Azure DNS                                               Private Resolver Inbound Endpoint                    180 USD/1
+Azure DNS                                               Private Resolver Outbound Endpoint                   180 USD/1
+Azure DNS                                               Private Zone                                        0.63 USD/1
+--- Log Analytics ingestion ---
+Log Analytics                                           Analytics Logs Data Ingestion                          0 USD/1 GB
+
+--- Private endpoint (re-query) ---
+--- SQL Database serverless General Purpose vCore (re-query) ---
+SQL Database General Purpose - Serverless - Compute Gen5               1 vCore - Free                               0 USD/1 Hour  (tier from 0)
+SQL Database General Purpose - Serverless - Compute Gen5               16 vCore - Free                              0 USD/1 Hour  (tier from 0)
+SQL Database General Purpose - Serverless - Compute Gen5               2 vCore - Free                               0 USD/1 Hour  (tier from 0)
+SQL Database General Purpose - Serverless - Compute Gen5               24 vCore - Free                              0 USD/1 Hour  (tier from 0)
+SQL Database General Purpose - Serverless - Compute Gen5               32 vCore - Free                              0 USD/1 Hour  (tier from 0)
+SQL Database General Purpose - Serverless - Compute Gen5               4 vCore - Free                               0 USD/1 Hour  (tier from 0)
+SQL Database General Purpose - Serverless - Compute Gen5               48 vCore - Free                              0 USD/1 Hour  (tier from 0)
+SQL Database General Purpose - Serverless - Compute Gen5               8 vCore - Free                               0 USD/1 Hour  (tier from 0)
+SQL Database General Purpose - Serverless - Compute Gen5               80 vCore - Free                              0 USD/1 Hour  (tier from 0)
+SQL Database General Purpose - Serverless - Compute Gen5               vCore                                 0.521758 USD/1 Hour  (tier from 0)
+SQL Database General Purpose - Serverless - Compute Gen5               Zone Redundancy vCore                 0.313055 USD/1 Hour  (tier from 0)
+SQL Database Single General Purpose - Serverless - Compute DC-Series   vCore                                    0.707 USD/1 Hour  (tier from 0)
+SQL Database Single General Purpose - Serverless - Compute Gen4        vCore                                 0.521758 USD/1 Hour  (tier from 0)
+--- Log Analytics ingestion, all tiers (first run collapsed tiers) ---
+Log Analytics                                                          Analytics Logs Data Ingestion                0 USD/1 GB  (tier from 0)
+Log Analytics                                                          Analytics Logs Data Ingestion              2.3 USD/1 GB  (tier from 5)

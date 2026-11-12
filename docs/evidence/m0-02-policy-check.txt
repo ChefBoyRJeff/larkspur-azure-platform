@@ -1,0 +1,11 @@
+=== M0-02: policy assignments, exemptions and custom definitions visible to this subscription, 2026-11-12 ===
+--- Assignments ---
+Name                   DisplayName                                                       EnforcementMode    Scope
+---------------------  ----------------------------------------------------------------  -----------------  ---------------------------------------------------
+deny-costly-resources  Block costly lab resources                                        Default            /subscriptions/<guid>
+SecurityCenterBuiltIn  ASC Default (subscription: <guid>)  Default            /subscriptions/<guid>
+
+--- Exemptions ---
+
+
+--- Custom definitions and their rule conditions ---

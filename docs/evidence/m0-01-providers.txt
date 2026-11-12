@@ -1,0 +1,18 @@
+=== M0-01: resource provider registration, 2026-11-12 ===
+register Microsoft.App exit=0
+register Microsoft.Sql exit=0
+register Microsoft.KeyVault exit=0
+register Microsoft.Network exit=0
+register Microsoft.OperationalInsights exit=0
+register Microsoft.Insights exit=0
+register Microsoft.ManagedIdentity exit=0
+register Microsoft.AlertsManagement exit=0
+--- registration state (re-check) ---
+Microsoft.App                    Registered
+Microsoft.Sql                    Registered
+Microsoft.KeyVault               Registered
+Microsoft.Network                Registered
+Microsoft.OperationalInsights    Registered
+Microsoft.Insights               Registered
+Microsoft.ManagedIdentity        Registered
+Microsoft.AlertsManagement       Registered

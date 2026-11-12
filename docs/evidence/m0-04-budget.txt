@@ -1,0 +1,118 @@
+=== M0-04: budget lint, what-if, deploy, drift check, 2026-11-12 ===
+--- lint ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+lint exit=0
+--- what-if (before) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with this symbol:
+  + Create
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/<guid>
+
+  + Microsoft.Consumption/budgets/budget-larkspur-platform [2023-11-01]
+
+      apiVersion:                                            "2023-11-01"
+      id:                                                    "/subscriptions/<guid>/providers/Microsoft.Consumption/budgets/budget-larkspur-platform"
+      name:                                                  "budget-larkspur-platform"
+      properties.amount:                                     5
+      properties.category:                                   "Cost"
+      properties.filter.dimensions.name:                     "ResourceGroupName"
+      properties.filter.dimensions.operator:                 "In"
+      properties.filter.dimensions.values: [
+        0: "rg-lark-data"
+        1: "rg-lark-app"
+      ]
+      properties.notifications.Actual_100.contactEmails: [
+        0: "[parameters('alertEmail')]"
+      ]
+      properties.notifications.Actual_100.enabled:           true
+      properties.notifications.Actual_100.operator:          "GreaterThanOrEqualTo"
+      properties.notifications.Actual_100.threshold:         100
+      properties.notifications.Actual_100.thresholdType:     "Actual"
+      properties.notifications.Actual_50.contactEmails: [
+        0: "[parameters('alertEmail')]"
+      ]
+      properties.notifications.Actual_50.enabled:            true
+      properties.notifications.Actual_50.operator:           "GreaterThanOrEqualTo"
+      properties.notifications.Actual_50.threshold:          50
+      properties.notifications.Actual_50.thresholdType:      "Actual"
+      properties.notifications.Forecasted_100.contactEmails: [
+        0: "[parameters('alertEmail')]"
+      ]
+      properties.notifications.Forecasted_100.enabled:       true
+      properties.notifications.Forecasted_100.operator:      "GreaterThanOrEqualTo"
+      properties.notifications.Forecasted_100.threshold:     100
+      properties.notifications.Forecasted_100.thresholdType: "Forecasted"
+      properties.timeGrain:                                  "Monthly"
+      properties.timePeriod.endDate:                         "2036-11-01T00:00:00Z"
+      properties.timePeriod.startDate:                       "2026-11-01T00:00:00Z"
+      type:                                                  "Microsoft.Consumption/budgets"
+
+Resource changes: 1 to create.
+
+--- deploy ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "outputs": {
+    "budgetName": {
+      "type": "String",
+      "value": "budget-larkspur-platform"
+    },
+    "filteredResourceGroups": {
+      "type": "Array",
+      "value": [
+        "rg-lark-data",
+        "rg-lark-app"
+      ]
+    }
+  },
+  "state": "Succeeded"
+}
+
+--- what-if (after: expect NoChange) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  - Delete
+  + Create
+  ~ Modify
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/<guid>
+
+  ~ Microsoft.Consumption/budgets/budget-larkspur-platform [2023-11-01]
+    ~ properties.notifications.actual_100.contactEmails: [
+      - 0: "<email>"
+      + 0: "[parameters('alertEmail')]"
+      ]
+    ~ properties.notifications.actual_50.contactEmails: [
+      - 0: "<email>"
+      + 0: "[parameters('alertEmail')]"
+      ]
+    ~ properties.notifications.forecasted_100.contactEmails: [
+      - 0: "<email>"
+      + 0: "[parameters('alertEmail')]"
+      ]
+
+Resource changes: 1 to modify.
+
+
+--- Drift check: deployed state vs code (prediction was NoChange; what-if reported Modify on contactEmails) ---
+amount=5 timeGrain=Monthly start=11/01/2026 00:00:00 end=11/01/2036 00:00:00
+filter RGs: rg-lark-data, rg-lark-app
+local alertEmail hash: 37D004C73950
+actual_100       threshold=100  type=Actual      email hash=37D004C73950
+actual_50        threshold=50   type=Actual      email hash=37D004C73950
+forecasted_100   threshold=100  type=Forecasted  email hash=37D004C73950
