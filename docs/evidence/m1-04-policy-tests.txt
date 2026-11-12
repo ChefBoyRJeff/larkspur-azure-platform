@@ -1,0 +1,34 @@
+=== M1-04: policy enforcement tests in rg-lark-app (NSG, free), 2026-11-12 15:58 ===
+Prediction (recorded before running): T1 denied, T2 denied, T3 denied; policy assignment name not predicted.
+Expected by design: T1 denied by lark-require-costcenter, T2 denied by lark-allowed-locations, T3 allowed.
+
+--- T1: no costCenter tag, eastus ---
+exit=1
+ERROR: (RequestDisallowedByPolicy) Resource 'nsg-lark-test-t1' was disallowed by policy. Reasons: 'Every Larkspur resource needs a costCenter tag so its cost can be allocated.'. See error details for policy resource IDs.
+Code: RequestDisallowedByPolicy
+Message: Resource 'nsg-lark-test-t1' was disallowed by policy. Reasons: 'Every Larkspur resource needs a costCenter tag so its cost can be allocated.'. See error details for policy resource IDs.
+Target: nsg-lark-test-t1
+
+
+--- T2: costCenter tag, westus ---
+exit=1
+ERROR: (RequestDisallowedByPolicy) Resource 'nsg-lark-test-t2' was disallowed by policy. Reasons: 'Larkspur resources must be deployed to: eastus.'. See error details for policy resource IDs.
+Code: RequestDisallowedByPolicy
+Message: Resource 'nsg-lark-test-t2' was disallowed by policy. Reasons: 'Larkspur resources must be deployed to: eastus.'. See error details for policy resource IDs.
+Target: nsg-lark-test-t2
+
+
+--- T3: costCenter tag, eastus ---
+exit=0
+{
+  "location": null,
+  "state": null,
+  "tags": null
+}
+
+
+--- Cleanup: delete T3 NSG, confirm rg-lark-app is empty ---
+delete exit=0
+
+
+(empty table above = nothing left behind)

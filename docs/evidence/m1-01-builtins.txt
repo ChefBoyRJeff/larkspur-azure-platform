@@ -1,0 +1,6 @@
+=== M1-01: built-in policy and role definitions referenced by infra/governance, 2026-11-12 ===
+policy 871b6d14-10aa-478d-b590-94f262ecfa99  displayName="Require a tag on resources"  params=tagName  match=True
+policy e56962a6-4747-49cd-b67b-bf8b01975c4c  displayName="Allowed locations"  params=effect,listOfAllowedLocations  match=True
+policy 1b8ca024-1d5c-4dec-8995-b1a932b41780  displayName="Public network access on Azure SQL Database should be disabled"  params=effect  match=True
+role   Reader                   id=acdd72a7-3385-48ef-bd42-f606fba81ae7  match=True
+role   Monitoring Contributor   id=749f88d5-cbae-40b8-bcfc-e573ddc772fa  match=True

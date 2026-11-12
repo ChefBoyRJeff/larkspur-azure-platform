@@ -1,0 +1,353 @@
+=== M1-02: governance lint, what-if, deploy, state, drift check, 2026-11-12 ===
+--- lint ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+lint exit=0
+--- what-if (before) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with this symbol:
+  + Create
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>
+
+  + resourceGroups/rg-lark-app [2024-03-01]
+
+      apiVersion:       "2024-03-01"
+      id:               "/subscriptions/<guid>/resourceGroups/rg-lark-app"
+      location:         "eastus"
+      name:             "rg-lark-app"
+      tags.company:     "Larkspur Logistics (fictional)"
+      tags.costCenter:  "CC-LARK-01"
+      tags.environment: "lab"
+      tags.owner:       "platform"
+      tags.project:     "larkspur-azure-platform"
+      type:             "Microsoft.Resources/resourceGroups"
+
+  + resourceGroups/rg-lark-data [2024-03-01]
+
+      apiVersion:       "2024-03-01"
+      id:               "/subscriptions/<guid>/resourceGroups/rg-lark-data"
+      location:         "eastus"
+      name:             "rg-lark-data"
+      tags.company:     "Larkspur Logistics (fictional)"
+      tags.costCenter:  "CC-LARK-01"
+      tags.environment: "lab"
+      tags.owner:       "platform"
+      tags.project:     "larkspur-azure-platform"
+      type:             "Microsoft.Resources/resourceGroups"
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  + Microsoft.Authorization/policyAssignments/lark-allowed-locations [2023-04-01]
+
+      apiVersion:                                    "2023-04-01"
+      id:                                            "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Authorization/policyAssignments/lark-allowed-locations"
+      name:                                          "lark-allowed-locations"
+      properties.displayName:                        "Larkspur: allowed locations (rg-lark-app)"
+      properties.enforcementMode:                    "Default"
+      properties.nonComplianceMessages: [
+        0:
+
+          message: "Larkspur resources must be deployed to: eastus."
+
+      ]
+      properties.parameters.listOfAllowedLocations.value: [
+        0: "eastus"
+      ]
+      properties.policyDefinitionId:                 "/providers/Microsoft.Authorization/policyDefinitions/<guid>"
+      type:                                          "Microsoft.Authorization/policyAssignments"
+
+  + Microsoft.Authorization/policyAssignments/lark-require-costcenter [2023-04-01]
+
+      apiVersion:                          "2023-04-01"
+      id:                                  "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Authorization/policyAssignments/lark-require-costcenter"
+      name:                                "lark-require-costcenter"
+      properties.displayName:              "Larkspur: require costCenter tag on resources (rg-lark-app)"
+      properties.enforcementMode:          "Default"
+      properties.nonComplianceMessages: [
+        0:
+
+          message: "Every Larkspur resource needs a costCenter tag so its cost can be allocated."
+
+      ]
+      properties.parameters.tagName.value: "costCenter"
+      properties.policyDefinitionId:       "/providers/Microsoft.Authorization/policyDefinitions/<guid>"
+      type:                                "Microsoft.Authorization/policyAssignments"
+
+  + Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+
+      apiVersion:                  "2022-04-01"
+      id:                          "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Authorization/roleAssignments/<guid>"
+      name:                        "<guid>"
+      properties.description:      "lark-ops: read application resources"
+      properties.principalId:      "<guid>"
+      properties.roleDefinitionId: "/subscriptions/<guid>/providers/Microsoft.Authorization/roleDefinitions/<guid>"
+      type:                        "Microsoft.Authorization/roleAssignments"
+
+  + Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+
+      apiVersion:                  "2022-04-01"
+      id:                          "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Authorization/roleAssignments/<guid>"
+      name:                        "<guid>"
+      properties.description:      "lark-dev: read application resources; changes go through the pipeline"
+      properties.principalId:      "<guid>"
+      properties.roleDefinitionId: "/subscriptions/<guid>/providers/Microsoft.Authorization/roleDefinitions/<guid>"
+      type:                        "Microsoft.Authorization/roleAssignments"
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  + Microsoft.Authorization/policyAssignments/lark-allowed-locations [2023-04-01]
+
+      apiVersion:                                    "2023-04-01"
+      id:                                            "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Authorization/policyAssignments/lark-allowed-locations"
+      name:                                          "lark-allowed-locations"
+      properties.displayName:                        "Larkspur: allowed locations (rg-lark-data)"
+      properties.enforcementMode:                    "Default"
+      properties.nonComplianceMessages: [
+        0:
+
+          message: "Larkspur resources must be deployed to: eastus."
+
+      ]
+      properties.parameters.listOfAllowedLocations.value: [
+        0: "eastus"
+      ]
+      properties.policyDefinitionId:                 "/providers/Microsoft.Authorization/policyDefinitions/<guid>"
+      type:                                          "Microsoft.Authorization/policyAssignments"
+
+  + Microsoft.Authorization/policyAssignments/lark-deny-sql-public-access [2023-04-01]
+
+      apiVersion:                         "2023-04-01"
+      id:                                 "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Authorization/policyAssignments/lark-deny-sql-public-access"
+      name:                               "lark-deny-sql-public-access"
+      properties.displayName:             "Larkspur: deny Azure SQL public network access (rg-lark-data)"
+      properties.enforcementMode:         "Default"
+      properties.nonComplianceMessages: [
+        0:
+
+          message: "Larkspur SQL servers are reachable only through private endpoints. Set publicNetworkAccess to Disabled."
+
+      ]
+      properties.parameters.effect.value: "Deny"
+      properties.policyDefinitionId:      "/providers/Microsoft.Authorization/policyDefinitions/<guid>"
+      type:                               "Microsoft.Authorization/policyAssignments"
+
+  + Microsoft.Authorization/policyAssignments/lark-require-costcenter [2023-04-01]
+
+      apiVersion:                          "2023-04-01"
+      id:                                  "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Authorization/policyAssignments/lark-require-costcenter"
+      name:                                "lark-require-costcenter"
+      properties.displayName:              "Larkspur: require costCenter tag on resources (rg-lark-data)"
+      properties.enforcementMode:          "Default"
+      properties.nonComplianceMessages: [
+        0:
+
+          message: "Every Larkspur resource needs a costCenter tag so its cost can be allocated."
+
+      ]
+      properties.parameters.tagName.value: "costCenter"
+      properties.policyDefinitionId:       "/providers/Microsoft.Authorization/policyDefinitions/<guid>"
+      type:                                "Microsoft.Authorization/policyAssignments"
+
+  + Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+
+      apiVersion:                  "2022-04-01"
+      id:                          "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Authorization/roleAssignments/<guid>"
+      name:                        "<guid>"
+      properties.description:      "lark-ops: read platform data resources"
+      properties.principalId:      "<guid>"
+      properties.roleDefinitionId: "/subscriptions/<guid>/providers/Microsoft.Authorization/roleDefinitions/<guid>"
+      type:                        "Microsoft.Authorization/roleAssignments"
+
+  + Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+
+      apiVersion:                  "2022-04-01"
+      id:                          "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Authorization/roleAssignments/<guid>"
+      name:                        "<guid>"
+      properties.description:      "lark-ops: manage alerts, action groups and workbooks"
+      properties.principalId:      "<guid>"
+      properties.roleDefinitionId: "/subscriptions/<guid>/providers/Microsoft.Authorization/roleDefinitions/<guid>"
+      type:                        "Microsoft.Authorization/roleAssignments"
+
+Resource changes: 11 to create.
+
+--- deploy ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "outputs": {
+    "appPolicyAssignments": {
+      "type": "Array",
+      "value": [
+        "lark-require-costcenter",
+        "lark-allowed-locations"
+      ]
+    },
+    "dataPolicyAssignments": {
+      "type": "Array",
+      "value": [
+        "lark-require-costcenter",
+        "lark-allowed-locations",
+        "lark-deny-sql-public-access"
+      ]
+    },
+    "resourceGroups": {
+      "type": "Array",
+      "value": [
+        "rg-lark-data",
+        "rg-lark-app"
+      ]
+    }
+  },
+  "state": "Succeeded"
+}
+
+--- state: rg-lark-data ---
+{
+  "location": "eastus",
+  "name": "rg-lark-data",
+  "tags": {
+    "company": "Larkspur Logistics (fictional)",
+    "costCenter": "CC-LARK-01",
+    "environment": "lab",
+    "owner": "platform",
+    "project": "larkspur-azure-platform"
+  }
+}
+
+[
+  {
+    "enforcement": "Default",
+    "name": "lark-deny-sql-public-access",
+    "parameters": {
+      "effect": {
+        "value": "Deny"
+      }
+    }
+  },
+  {
+    "enforcement": "Default",
+    "name": "lark-allowed-locations",
+    "parameters": {
+      "listOfAllowedLocations": {
+        "value": [
+          "eastus"
+        ]
+      }
+    }
+  },
+  {
+    "enforcement": "Default",
+    "name": "lark-require-costcenter",
+    "parameters": {
+      "tagName": {
+        "value": "costCenter"
+      }
+    }
+  }
+]
+
+Group     Role
+--------  ----------------------
+lark-ops  Reader
+lark-ops  Monitoring Contributor
+
+--- state: rg-lark-app ---
+{
+  "location": "eastus",
+  "name": "rg-lark-app",
+  "tags": {
+    "company": "Larkspur Logistics (fictional)",
+    "costCenter": "CC-LARK-01",
+    "environment": "lab",
+    "owner": "platform",
+    "project": "larkspur-azure-platform"
+  }
+}
+
+[
+  {
+    "enforcement": "Default",
+    "name": "lark-require-costcenter",
+    "parameters": {
+      "tagName": {
+        "value": "costCenter"
+      }
+    }
+  },
+  {
+    "enforcement": "Default",
+    "name": "lark-allowed-locations",
+    "parameters": {
+      "listOfAllowedLocations": {
+        "value": [
+          "eastus"
+        ]
+      }
+    }
+  }
+]
+
+Group     Role
+--------  ------
+lark-dev  Reader
+lark-ops  Reader
+
+--- what-if (after: expect NoChange) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  - Delete
+  ~ Modify
+  = Nochange
+  x Noeffect
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>
+
+  = resourceGroups/rg-lark-app [2024-03-01]
+  = resourceGroups/rg-lark-data [2024-03-01]
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  ~ Microsoft.Authorization/policyAssignments/lark-allowed-locations [2023-04-01]
+    - properties.definitionVersion: "1.*.*"
+
+  ~ Microsoft.Authorization/policyAssignments/lark-require-costcenter [2023-04-01]
+    - properties.definitionVersion: "1.*.*"
+
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  ~ Microsoft.Authorization/policyAssignments/lark-allowed-locations [2023-04-01]
+    - properties.definitionVersion: "1.*.*"
+
+  ~ Microsoft.Authorization/policyAssignments/lark-deny-sql-public-access [2023-04-01]
+    - properties.definitionVersion: "1.*.*"
+
+  ~ Microsoft.Authorization/policyAssignments/lark-require-costcenter [2023-04-01]
+    - properties.definitionVersion: "1.*.*"
+
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+Resource changes: 5 to modify, 6 no change.
+

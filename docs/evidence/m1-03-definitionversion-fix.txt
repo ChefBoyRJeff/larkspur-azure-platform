@@ -1,0 +1,104 @@
+=== M1-03: fix definitionVersion what-if noise, redeploy, drift check, 2026-11-12 ===
+--- lint ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+lint exit=0
+--- what-if (before fix deploy: expect Modify only where definitionVersion is now declared, or NoChange) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  = Nochange
+  x Noeffect
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>
+
+  = resourceGroups/rg-lark-app [2024-03-01]
+  = resourceGroups/rg-lark-data [2024-03-01]
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  = Microsoft.Authorization/policyAssignments/lark-allowed-locations [2024-04-01]
+  = Microsoft.Authorization/policyAssignments/lark-require-costcenter [2024-04-01]
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  = Microsoft.Authorization/policyAssignments/lark-allowed-locations [2024-04-01]
+  = Microsoft.Authorization/policyAssignments/lark-deny-sql-public-access [2024-04-01]
+  = Microsoft.Authorization/policyAssignments/lark-require-costcenter [2024-04-01]
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+Resource changes: 11 no change.
+
+--- deploy ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded"
+}
+
+--- stored definitionVersion per assignment ---
+Rg            Name                         DefinitionVersion
+------------  ---------------------------  -------------------
+rg-lark-data  lark-deny-sql-public-access  1.*.*
+rg-lark-data  lark-allowed-locations       1.*.*
+rg-lark-data  lark-require-costcenter      1.*.*
+
+Rg           Name                     DefinitionVersion
+-----------  -----------------------  -------------------
+rg-lark-app  lark-require-costcenter  1.*.*
+rg-lark-app  lark-allowed-locations   1.*.*
+
+--- what-if (after: expect NoChange) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  = Nochange
+  x Noeffect
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>
+
+  = resourceGroups/rg-lark-app [2024-03-01]
+  = resourceGroups/rg-lark-data [2024-03-01]
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  = Microsoft.Authorization/policyAssignments/lark-allowed-locations [2024-04-01]
+  = Microsoft.Authorization/policyAssignments/lark-require-costcenter [2024-04-01]
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  = Microsoft.Authorization/policyAssignments/lark-allowed-locations [2024-04-01]
+  = Microsoft.Authorization/policyAssignments/lark-deny-sql-public-access [2024-04-01]
+  = Microsoft.Authorization/policyAssignments/lark-require-costcenter [2024-04-01]
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+  = Microsoft.Authorization/roleAssignments/<guid> [2022-04-01]
+    x properties.principalType: "Group"
+
+Resource changes: 11 no change.
+
