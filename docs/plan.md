@@ -1,8 +1,9 @@
 # Plan: Larkspur Logistics Azure Platform
 
-> Larkspur Logistics is a **fictional** company. This repository is a hands-on lab: a small, single-subscription
-> landing zone run with production practices. It is not Microsoft's enterprise-scale landing zone architecture and
-> it is not a production system.
+> Larkspur Logistics is a **fictional** company. This is a personal portfolio project, designed, built and operated
+> end to end on my own Azure subscription: a small, single-subscription landing zone run with production practices.
+> It is not Microsoft's enterprise-scale landing zone architecture and it is not a production system serving real
+> customers.
 
 Plan approved: 2026-11-12. Region: `eastus`.
 
@@ -48,7 +49,7 @@ Internet ──HTTPS──▶ Container App "tracking-api" (Consumption profile,
 | Group | Lifetime | Contents |
 |---|---|---|
 | rg-lark-data | Persistent (near $0 idle) | SQL server + free database, Key Vault, Log Analytics, alert rules, action group, private DNS zones |
-| rg-lark-app | Torn down every session; redeployed by the pipeline | VNet, NSGs, private endpoints, Container Apps environment + app, managed identity |
+| rg-lark-app | Group persistent (it carries the M1 policy and RBAC assignments); contents torn down every session and redeployed | VNet, NSGs, private endpoints, Container Apps environment + app, managed identity |
 
 Private DNS zones moved to `rg-lark-data` after M0 pricing: a zone is priced per month ($0.63 in `eastus` on
 2026-11-12) and it isn't confirmed whether a zone that exists for part of a month is prorated. Keeping two
@@ -75,16 +76,19 @@ Every milestone includes portal work as well as Bicep/CLI, and saves sanitized e
 |---|---|---|
 | M0 | Prerequisites | Repo created; providers registered; existing policy assignments/exemptions reviewed; prices captured; budget deployed and what-if NoChange |
 | M1 | Governance | Resource groups created from Bicep with tags; policy assignments at resource-group scope (require `costCenter` tag, allowed locations, SQL public network access denied in rg-lark-data); Entra groups `lark-ops` / `lark-dev` created in the portal with least-privilege RBAC; untagged and wrong-region deployments denied, compliant one allowed; second what-if NoChange |
-| M2 | Network | VNet, subnets, NSGs and private DNS zones deployed from Bicep; second what-if run shows NoChange |
+| M2 | Network | Private DNS zones (rg-lark-data) and vnet-lark with snet-aca, snet-pe and NSGs (rg-lark-app) deployed from Bicep; zones linked to the VNet; NSG enforcement enabled for private endpoints; second what-if NoChange; teardown script empties rg-lark-app and removes the links |
 | M3 | Data and secrets | SQL free database with Entra-only auth + PE; Key Vault + PE; `CanNotDelete` locks on the SQL server and Key Vault; `nslookup` from inside the VNet resolves to private IPs; public access is refused; private endpoint cost read from Cost Analysis |
 | M4 | App | Image built by GitHub Actions and pushed to GHCR; Container App reads shipments from SQL with its managed identity; Cost Analysis shows no Container Apps management-hour charge |
 | M5 | CI/CD | PR runs lint + what-if; merge to main waits for approval, deploys, verifies, and passes an idempotency check |
 | M6 | Observability | Diagnostic settings; alerts on HTTP 5xx, SQL "Free amount remaining" < 10,000 vCore-seconds, and budget; a workbook |
 | M7 | Recovery | SQL point-in-time restore with measured RTO/RPO; Key Vault secret soft-delete recovery; Container App revision rollback |
-| M8 | Game day | 4–5 scripted incidents, each with a prediction recorded first, then symptoms, evidence, root cause, fix, verification and an RCA |
+| M8 | Operations | 4–5 operational incidents, each with symptoms, diagnosis, root cause, fix, verification and an incident report |
 | M9 | Deliverables | README, architecture diagram, runbook, cost report, teardown script, interview guide |
 
-### Game-day incidents (M8)
+### Operational incidents (M8)
+
+Each incident is handled the way an operations team would: alert or report, triage, diagnosis, fix, verification,
+then an incident report with root cause and prevention.
 
 1. Private DNS zone VNet link removed: app can't reach SQL.
 2. Managed identity's Key Vault role assignment removed: 403 from Key Vault.
@@ -132,10 +136,13 @@ in Cost Analysis.
 |---|---|---|
 | M0 | Private DNS zones moved to rg-lark-data | Zone priced per month; persistent zones cap cost at ~$1.26/month |
 | M1 | `CanNotDelete` lock moved from the whole rg-lark-data group to the SQL server and Key Vault (M3) | A group lock also locks child resources, so it would block deleting the private DNS zone VNet links during per-session teardown |
-| M1 | Policies assigned at resource-group scope | The subscription hosts other lab projects; a subscription-wide tag requirement would deny their redeployments |
+| M1 | Policies assigned at resource-group scope | The subscription hosts my other projects; a subscription-wide tag requirement would deny their redeployments |
+| M2 | rg-lark-app kept; only its contents are torn down | Deleting the group would delete its M1 policy and RBAC assignments, and recreating those needs rights the pipeline shouldn't have |
 
 ## Teardown
 
-- End of every session: delete the private DNS zone VNet links, then delete `rg-lark-app` (the pipeline recreates both).
+- End of every session: `scripts/Remove-LarkAppResources.ps1` deletes the private DNS zone VNet links, then everything
+  inside `rg-lark-app` in dependency order, and verifies the group is empty. The group itself stays, because deleting
+  it would also delete its policy and RBAC assignments.
 - `rg-lark-data` stays: the SQL free database auto-pauses and the rest costs pennies.
 - End of project: remove the lock, delete both groups, delete the budget, remove the OIDC app registrations.

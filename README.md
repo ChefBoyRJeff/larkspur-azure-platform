@@ -1,6 +1,6 @@
 # Larkspur Logistics Azure Platform
 
-> **Status:** in progress (M2: network next). See [docs/plan.md](docs/plan.md).
+> **Status:** in progress (M3: data and secrets next). See [docs/plan.md](docs/plan.md).
 
 ## Scenario
 
@@ -30,7 +30,8 @@ milestone is delivered and verified.
 |---|---|---|
 | M0 Prerequisites | ✅ Delivered 2026-11-12 | [`docs/evidence/m0-*`](docs/evidence/) |
 | M1 Governance | ✅ Delivered 2026-11-12 | [`docs/evidence/m1-*`](docs/evidence/) |
-| M2–M9 | Not started | |
+| M2 Network | ✅ Delivered 2026-11-12 | [`docs/evidence/m2-*`](docs/evidence/) |
+| M3–M9 | Not started | |
 
 ### M0: Prerequisites
 
@@ -85,3 +86,61 @@ stores `1.*.*` (latest 1.x) when an assignment doesn't specify one. The code nev
 proposed removing it. Fix: moved to API `2024-04-01` (the first version with `definitionVersion`) and declared
 `definitionVersion: '1.*.*'`. Re-run: `11 no change`. Pinning the major version also means a breaking 2.x of a
 built-in policy can't silently change these guardrails.
+
+### M2: Network
+
+**Delivered**
+
+- `infra/data/` → `rg-lark-data`: private DNS zones `privatelink.database.windows.net` and
+  `privatelink.vaultcore.azure.net` (persistent, shared platform service).
+- `infra/app/` → `rg-lark-app`: `vnet-lark` (10.60.0.0/16) with `snet-aca` (10.60.0.0/27, delegated to
+  `Microsoft.App/environments`) and `snet-pe` (10.60.1.0/27), an NSG on each, and VNet links into both zones.
+- `scripts/Remove-LarkAppResources.ps1`: end-of-session teardown.
+
+| NSG | Priority | Rule | Purpose |
+|---|---|---|---|
+| nsg-lark-aca | 100 | AzureLoadBalancer → 30000-32767 | Health probes to the environment nodes |
+| | 110 | snet-aca ↔ snet-aca | Container Apps infrastructure traffic |
+| | 120 | Internet → 80, 443, 31080, 31443 | Public tracking API and environment edge proxy |
+| | 4000 | Deny VirtualNetwork | Overrides the default `AllowVnetInBound` |
+| nsg-lark-pe | 100 | snet-aca → 1433 | App to SQL private endpoint |
+| | 110 | snet-aca → 443 | App to Key Vault private endpoint |
+| | 4000 | Deny VirtualNetwork | Only the app subnet reaches the private endpoints |
+
+**Key decisions**
+
+- **Two stacks split by lifecycle.** DNS zones are persistent and shared; the VNet and everything in it are rebuilt
+  each session. The VNet links are children of the zones, so they deploy into `rg-lark-data` from the app stack.
+- **NSG enforcement for private endpoints is explicitly enabled** (`privateEndpointNetworkPolicies:
+  NetworkSecurityGroupEnabled`). Without it, Azure ignores NSG rules for traffic to private endpoints, and the
+  `nsg-lark-pe` rules would be decoration.
+- **Explicit `Deny-VNet-Inbound` at 4000** on both NSGs. Azure's default `AllowVnetInBound` would let anything in
+  the VNet, and later anything peered or connected over VPN (depots), reach the data path.
+- **Private subnets** (`defaultOutboundAccess: false`): no implicit internet egress. M4 must verify the Container
+  Apps environment's own outbound path still pulls images and reaches Entra ID.
+- **Teardown empties `rg-lark-app` but keeps the group**, because the group carries the M1 policy and RBAC
+  assignments. The script deletes in dependency order (DNS links → app → environment → private endpoints → VNet →
+  NSGs → identities), leaves unknown resource types alone and reports them, and verifies the group is empty.
+
+**Verification**
+
+| Check | Result |
+|---|---|
+| Lint, both stacks | ✅ exit 0 |
+| Deploy, both stacks | ✅ `Succeeded`; no policy denials |
+| `global` resources vs the allowed-locations policy | ✅ DNS zones and links allowed (the built-in exempts `global`) |
+| Zones and links | ✅ 1 link per zone, `Completed`, auto-registration off, `costCenter` tag present |
+| Subnets | ✅ delegation, NSGs, `NetworkSecurityGroupEnabled` on `snet-pe`, default outbound off |
+| Rebuild from code + what-if | ✅ `5 no change` (after the fix below) |
+| Teardown | ✅ links → VNet → NSGs deleted, `rg-lark-app` empty, zones kept, guardrails still assigned |
+
+**Problems found and fixed**
+
+1. **What-if drift on `vnet-lark`.** The post-deploy what-if reported `- properties.privateEndpointVNetPolicies:
+   "Disabled"`. Azure stores this VNet-level property (API 2024-03-01 and later) with a default, and the template
+   didn't declare it. Fix: declared `privateEndpointVNetPolicies: 'Disabled'`.
+2. **The first fix didn't reach the deployment.** The re-run still showed the drift. Checking the file actually used
+   showed the old version (no `privateEndpointVNetPolicies` line, 6,291 bytes instead of 6,655), so the deployment
+   had been run against stale code. After the corrected file was in place (verified by content and size), a full
+   rebuild from code returned `5 no change`. Lesson: when a fix "doesn't work", verify the artifact that was
+   deployed before changing the fix.

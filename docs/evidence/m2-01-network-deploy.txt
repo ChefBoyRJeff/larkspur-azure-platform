@@ -1,0 +1,374 @@
+=== M2-01: network deploy (data + app stacks), 2026-11-12 16:04 ===
+--- lint infra\data\main.bicep ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+lint exit=0
+--- lint infra\app\main.bicep ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+lint exit=0
+--- what-if: data (rg-lark-data) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with this symbol:
+  + Create
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  + Microsoft.Network/privateDnsZones/privatelink.database.windows.net [2020-06-01]
+
+      apiVersion:       "2020-06-01"
+      id:               "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net"
+      location:         "global"
+      name:             "privatelink.database.windows.net"
+      tags.company:     "Larkspur Logistics (fictional)"
+      tags.costCenter:  "CC-LARK-01"
+      tags.environment: "lab"
+      tags.owner:       "platform"
+      tags.project:     "larkspur-azure-platform"
+      type:             "Microsoft.Network/privateDnsZones"
+
+  + Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net [2020-06-01]
+
+      apiVersion:       "2020-06-01"
+      id:               "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net"
+      location:         "global"
+      name:             "privatelink.vaultcore.azure.net"
+      tags.company:     "Larkspur Logistics (fictional)"
+      tags.costCenter:  "CC-LARK-01"
+      tags.environment: "lab"
+      tags.owner:       "platform"
+      tags.project:     "larkspur-azure-platform"
+      type:             "Microsoft.Network/privateDnsZones"
+
+Resource changes: 2 to create.
+
+--- deploy: data ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded",
+  "zones": [
+    "privatelink.database.windows.net",
+    "privatelink.vaultcore.azure.net"
+  ]
+}
+
+--- what-if: app (rg-lark-app) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  + Create
+  * Ignore
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  + Microsoft.Network/networkSecurityGroups/nsg-lark-aca [2024-05-01]
+
+      apiVersion:       "2024-05-01"
+      id:               "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/networkSecurityGroups/nsg-lark-aca"
+      location:         "eastus"
+      name:             "nsg-lark-aca"
+      properties.securityRules: [
+        0:
+
+          name:                                "Allow-AzureLoadBalancer-Probes"
+          properties.access:                   "Allow"
+          properties.description:              "Azure Load Balancer health probes to the environment nodes"
+          properties.destinationAddressPrefix: "10.60.0.0/27"
+          properties.destinationPortRange:     "30000-32767"
+          properties.direction:                "Inbound"
+          properties.priority:                 100
+          properties.protocol:                 "Tcp"
+          properties.sourceAddressPrefix:      "AzureLoadBalancer"
+          properties.sourcePortRange:          "*"
+
+        1:
+
+          name:                                "Allow-Intra-Subnet"
+          properties.access:                   "Allow"
+          properties.description:              "Container Apps infrastructure traffic between IPs in the environment subnet"
+          properties.destinationAddressPrefix: "10.60.0.0/27"
+          properties.destinationPortRange:     "*"
+          properties.direction:                "Inbound"
+          properties.priority:                 110
+          properties.protocol:                 "*"
+          properties.sourceAddressPrefix:      "10.60.0.0/27"
+          properties.sourcePortRange:          "*"
+
+        2:
+
+          name:                                "Allow-Web-From-Internet"
+          properties.access:                   "Allow"
+          properties.description:              "Public shipment-tracking API: HTTP/HTTPS and the environment edge proxy ports"
+          properties.destinationAddressPrefix: "10.60.0.0/27"
+          properties.destinationPortRanges: [
+            0: "80"
+            1: "443"
+            2: "31080"
+            3: "31443"
+          ]
+          properties.direction:                "Inbound"
+          properties.priority:                 120
+          properties.protocol:                 "Tcp"
+          properties.sourceAddressPrefix:      "Internet"
+          properties.sourcePortRange:          "*"
+
+        3:
+
+          name:                                "Deny-VNet-Inbound"
+          properties.access:                   "Deny"
+          properties.description:              "Override the default AllowVnetInBound: nothing else in (or connected to) the VNet gets in"
+          properties.destinationAddressPrefix: "*"
+          properties.destinationPortRange:     "*"
+          properties.direction:                "Inbound"
+          properties.priority:                 4000
+          properties.protocol:                 "*"
+          properties.sourceAddressPrefix:      "VirtualNetwork"
+          properties.sourcePortRange:          "*"
+
+      ]
+      tags.company:     "Larkspur Logistics (fictional)"
+      tags.costCenter:  "CC-LARK-01"
+      tags.environment: "lab"
+      tags.owner:       "platform"
+      tags.project:     "larkspur-azure-platform"
+      type:             "Microsoft.Network/networkSecurityGroups"
+
+  + Microsoft.Network/networkSecurityGroups/nsg-lark-pe [2024-05-01]
+
+      apiVersion:       "2024-05-01"
+      id:               "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/networkSecurityGroups/nsg-lark-pe"
+      location:         "eastus"
+      name:             "nsg-lark-pe"
+      properties.securityRules: [
+        0:
+
+          name:                                "Allow-HTTPS-From-App"
+          properties.access:                   "Allow"
+          properties.description:              "tracking-api to the Key Vault private endpoint"
+          properties.destinationAddressPrefix: "10.60.1.0/27"
+          properties.destinationPortRange:     "443"
+          properties.direction:                "Inbound"
+          properties.priority:                 110
+          properties.protocol:                 "Tcp"
+          properties.sourceAddressPrefix:      "10.60.0.0/27"
+          properties.sourcePortRange:          "*"
+
+        1:
+
+          name:                                "Allow-SQL-From-App"
+          properties.access:                   "Allow"
+          properties.description:              "tracking-api to the Azure SQL private endpoint"
+          properties.destinationAddressPrefix: "10.60.1.0/27"
+          properties.destinationPortRange:     "1433"
+          properties.direction:                "Inbound"
+          properties.priority:                 100
+          properties.protocol:                 "Tcp"
+          properties.sourceAddressPrefix:      "10.60.0.0/27"
+          properties.sourcePortRange:          "*"
+
+        2:
+
+          name:                                "Deny-VNet-Inbound"
+          properties.access:                   "Deny"
+          properties.description:              "Override the default AllowVnetInBound: only the app subnet reaches the private endpoints"
+          properties.destinationAddressPrefix: "*"
+          properties.destinationPortRange:     "*"
+          properties.direction:                "Inbound"
+          properties.priority:                 4000
+          properties.protocol:                 "*"
+          properties.sourceAddressPrefix:      "VirtualNetwork"
+          properties.sourcePortRange:          "*"
+
+      ]
+      tags.company:     "Larkspur Logistics (fictional)"
+      tags.costCenter:  "CC-LARK-01"
+      tags.environment: "lab"
+      tags.owner:       "platform"
+      tags.project:     "larkspur-azure-platform"
+      type:             "Microsoft.Network/networkSecurityGroups"
+
+  + Microsoft.Network/virtualNetworks/vnet-lark [2024-05-01]
+
+      apiVersion:               "2024-05-01"
+      id:                       "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/virtualNetworks/vnet-lark"
+      location:                 "eastus"
+      name:                     "vnet-lark"
+      properties.addressSpace.addressPrefixes: [
+        0: "10.60.0.0/16"
+      ]
+      properties.subnets: [
+        0:
+
+          name:                               "snet-aca"
+          properties.addressPrefix:           "10.60.0.0/27"
+          properties.defaultOutboundAccess:   false
+          properties.delegations: [
+            0:
+
+              name:                   "Microsoft.App.environments"
+              properties.serviceName: "Microsoft.App/environments"
+
+          ]
+          properties.networkSecurityGroup.id: "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/networkSecurityGroups/nsg-lark-aca"
+
+        1:
+
+          name:                                      "snet-pe"
+          properties.addressPrefix:                  "10.60.1.0/27"
+          properties.defaultOutboundAccess:          false
+          properties.networkSecurityGroup.id:        "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/networkSecurityGroups/nsg-lark-pe"
+          properties.privateEndpointNetworkPolicies: "NetworkSecurityGroupEnabled"
+
+      ]
+      tags.company:             "Larkspur Logistics (fictional)"
+      tags.costCenter:          "CC-LARK-01"
+      tags.environment:         "lab"
+      tags.owner:               "platform"
+      tags.project:             "larkspur-azure-platform"
+      type:                     "Microsoft.Network/virtualNetworks"
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  + Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+
+      apiVersion:                     "2020-06-01"
+      id:                             "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark"
+      location:                       "global"
+      name:                           "link-vnet-lark"
+      properties.registrationEnabled: false
+      properties.virtualNetwork.id:   "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/virtualNetworks/vnet-lark"
+      tags.company:                   "Larkspur Logistics (fictional)"
+      tags.costCenter:                "CC-LARK-01"
+      tags.environment:               "lab"
+      tags.owner:                     "platform"
+      tags.project:                   "larkspur-azure-platform"
+      type:                           "Microsoft.Network/privateDnsZones/virtualNetworkLinks"
+
+  + Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+
+      apiVersion:                     "2020-06-01"
+      id:                             "/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark"
+      location:                       "global"
+      name:                           "link-vnet-lark"
+      properties.registrationEnabled: false
+      properties.virtualNetwork.id:   "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/virtualNetworks/vnet-lark"
+      tags.company:                   "Larkspur Logistics (fictional)"
+      tags.costCenter:                "CC-LARK-01"
+      tags.environment:               "lab"
+      tags.owner:                     "platform"
+      tags.project:                   "larkspur-azure-platform"
+      type:                           "Microsoft.Network/privateDnsZones/virtualNetworkLinks"
+
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net
+
+Resource changes: 5 to create, 2 to ignore.
+
+--- deploy: app ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded"
+}
+
+--- zones ---
+Zone                              VnetLinks    CostCenter
+--------------------------------  -----------  ------------
+privatelink.database.windows.net  1            CC-LARK-01
+privatelink.vaultcore.azure.net   1            CC-LARK-01
+
+--- links in privatelink.database.windows.net ---
+Link            LinkState    Provisioning    AutoRegistration
+--------------  -----------  --------------  ------------------
+link-vnet-lark  Completed    Succeeded       False
+
+--- links in privatelink.vaultcore.azure.net ---
+Link            LinkState    Provisioning    AutoRegistration
+--------------  -----------  --------------  ------------------
+link-vnet-lark  Completed    Succeeded       False
+
+--- subnets ---
+Subnet    Prefix        Delegation                  PePolicies                   DefaultOutbound    Nsg
+--------  ------------  --------------------------  ---------------------------  -----------------  ---------------------------------------------------------------------------------------------------------------------------------------------
+snet-aca  10.60.0.0/27  Microsoft.App/environments  Disabled                     False              /subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/networkSecurityGroups/nsg-lark-aca
+snet-pe   10.60.1.0/27                              NetworkSecurityGroupEnabled  False              /subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/networkSecurityGroups/nsg-lark-pe
+
+--- nsg-lark-aca rules ---
+Priority    Rule                            Access    Direction    Protocol    Source             Destination    Ports
+----------  ------------------------------  --------  -----------  ----------  -----------------  -------------  ------------------
+100         Allow-AzureLoadBalancer-Probes  Allow     Inbound      Tcp         AzureLoadBalancer  10.60.0.0/27   30000-32767
+110         Allow-Intra-Subnet              Allow     Inbound      *           10.60.0.0/27       10.60.0.0/27   *
+120         Allow-Web-From-Internet         Allow     Inbound      Tcp         Internet           10.60.0.0/27   80,443,31080,31443
+4000        Deny-VNet-Inbound               Deny      Inbound      *           VirtualNetwork     *              *
+
+--- nsg-lark-pe rules ---
+Priority    Rule                  Access    Direction    Protocol    Source          Destination    Ports
+----------  --------------------  --------  -----------  ----------  --------------  -------------  -------
+100         Allow-SQL-From-App    Allow     Inbound      Tcp         10.60.0.0/27    10.60.1.0/27   1433
+110         Allow-HTTPS-From-App  Allow     Inbound      Tcp         10.60.0.0/27    10.60.1.0/27   443
+4000        Deny-VNet-Inbound     Deny      Inbound      *           VirtualNetwork  *              *
+
+--- what-if again: data ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  = Nochange
+  * Ignore
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  = Microsoft.Network/privateDnsZones/privatelink.database.windows.net [2020-06-01]
+  = Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net [2020-06-01]
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark
+
+Resource changes: 2 no change, 2 to ignore.
+
+--- what-if again: app ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  - Delete
+  ~ Modify
+  = Nochange
+  * Ignore
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  ~ Microsoft.Network/virtualNetworks/vnet-lark [2024-05-01]
+    - properties.privateEndpointVNetPolicies: "Disabled"
+
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-aca [2024-05-01]
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-pe [2024-05-01]
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  = Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  = Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net
+
+Resource changes: 1 to modify, 4 no change, 2 to ignore.
+

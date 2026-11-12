@@ -1,0 +1,50 @@
+=== M2-04: verify privateEndpointVNetPolicies fix (rebuild from code, drift check, teardown), 2026-11-12 16:15 ===
+--- file check: fix present in network.bicep ---
+line 166: privateEndpointVNetPolicies: 'Disabled'
+size=6655 bytes
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+lint exit=0
+--- rebuild app stack from code ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded"
+}
+
+--- what-if (expect NoChange) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  = Nochange
+  * Ignore
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-aca [2024-05-01]
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-pe [2024-05-01]
+  = Microsoft.Network/virtualNetworks/vnet-lark [2024-05-01]
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  = Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  = Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net
+
+Resource changes: 5 no change, 2 to ignore.
+
+--- end-of-session teardown ---
+=== Teardown: rg-lark-app (links in rg-lark-data), 2026-11-12 16:17 ===
+deleted link   privatelink.database.windows.net/link-vnet-lark
+deleted link   privatelink.vaultcore.azure.net/link-vnet-lark
+deleted        Microsoft.Network/virtualNetworks/vnet-lark
+deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-pe
+deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-aca
+verified       rg-lark-app is empty
+

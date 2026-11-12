@@ -1,0 +1,28 @@
+=== M2-03: end-of-session teardown, 2026-11-12 16:12 ===
+=== Teardown: rg-lark-app (links in rg-lark-data), 2026-11-12 16:12 ===
+deleted link   privatelink.database.windows.net/link-vnet-lark
+deleted link   privatelink.vaultcore.azure.net/link-vnet-lark
+deleted        Microsoft.Network/virtualNetworks/vnet-lark
+deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-pe
+deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-aca
+verified       rg-lark-app is empty
+
+--- after: zones still exist (persistent), links gone ---
+Zone                              VnetLinks
+--------------------------------  -----------
+privatelink.database.windows.net  0
+privatelink.vaultcore.azure.net   0
+
+--- after: rg-lark-app still exists with its guardrails ---
+Group        State
+-----------  ---------
+rg-lark-app  Succeeded
+
+lark-require-costcenter
+lark-allowed-locations
+
+Group     Role
+--------  ------
+lark-dev  Reader
+lark-ops  Reader
+
