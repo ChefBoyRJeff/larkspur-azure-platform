@@ -150,7 +150,7 @@ in Cost Analysis.
 | M4a | Container Apps managed resource group named `rg-lark-app-infra` and added to the budget | A VNet-integrated environment creates a Standard Load Balancer and public IPs billed outside Container Apps; under the default `ME_…` name the budget wouldn't see them |
 | M4b | Managed identities live in rg-lark-data, not rg-lark-app | rg-lark-app is rebuilt every session; a rebuilt identity gets a new client ID, which would leave stale database users and role assignments |
 | M4b | Container image in public GHCR instead of Azure Container Registry | The image holds no secrets; GHCR is free, Container Registry Basic is ~$0.17/day |
-| M5 | Container Apps logs via an Azure Monitor diagnostic setting instead of the environment's Log Analytics key | The key-based setting makes every deployer (and what-if) read the workspace's shared key; a diagnostic setting needs no key |
+| M5 | Container Apps logs via an Azure Monitor diagnostic setting instead of the environment's Log Analytics key | The key-based setting puts the workspace key value through the template and makes what-if read it. A diagnostic setting keeps the key out of the template and deployment history; the deploy identity still needs `sharedKeys/action` on the workspace for Azure's linked-scope check (INC-003) |
 | M5 | The pipeline deploys only the app stack; governance and the data tier stay admin-deployed | They hold policies, locks, role assignments and data. The deploy identity gets only what the app stack touches in rg-lark-data, through a custom role |
 | M5 | Deployments are started manually (with approval), not on every push | The app stack is torn down after every session for cost; a session starts by running `deploy` and ends with `teardown` |
 

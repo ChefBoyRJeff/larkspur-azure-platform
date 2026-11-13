@@ -1,0 +1,35 @@
+=== M5 validate run for PR #1 (workflow run 43447775085), 11-13-2026 09:57 EST, branch m5-pipeline ===
+Result: Lint and build = success (31s); What-if (app stack) = success (41s); Guardrail - plan identity cannot deploy = success (32s)
+
+--- What-if as gh-lark-plan (ProviderNoRbac), resource list ---
+Scope: /subscriptions/<subscription>/resourceGroups/rg-lark-app
+  + Microsoft.App/containerApps/ca-lark-tracking-api [2024-03-01]
+  + Microsoft.App/jobs/job-lark-dnscheck [2024-03-01]
+  + Microsoft.App/jobs/job-lark-migrate [2024-03-01]
+  + Microsoft.App/managedEnvironments/cae-lark [2024-03-01]
+  + Microsoft.App/managedEnvironments/cae-lark/providers/Microsoft.Insights/diagnosticSettings/diag-to-log-lark [2021-05-01-preview]
+  + Microsoft.Network/networkSecurityGroups/nsg-lark-aca [2024-05-01]
+  + Microsoft.Network/networkSecurityGroups/nsg-lark-pe [2024-05-01]
+  + Microsoft.Network/privateEndpoints/pe-lark-kv [2024-05-01]
+  + Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default [2024-05-01]
+  + Microsoft.Network/privateEndpoints/pe-lark-sql [2024-05-01]
+  + Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default [2024-05-01]
+  + Microsoft.Network/virtualNetworks/vnet-lark [2024-05-01]
+Scope: /subscriptions/<subscription>/resourceGroups/rg-lark-data
+  + Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  + Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  * Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws
+  * Microsoft.ManagedIdentity/userAssignedIdentities/id-lark-migrator
+  * Microsoft.ManagedIdentity/userAssignedIdentities/id-lark-tracking-api
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net
+  * Microsoft.OperationalInsights/workspaces/log-lark
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/master
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking
+Resource changes: 14 to create, 9 to ignore.
+(No LARK_IMAGE in validate, so the image shows the local fallback ghcr.io/chefboyrjeff/larkspur-tracking-api:main. Deploy pins a verified SHA tag.)
+
+--- Guardrail: real deployment attempt as gh-lark-plan ---
+ERROR: {"code": "InvalidTemplateDeployment", "message": "Deployment failed with multiple errors: 'Authorization failed for template resource 'lark-network' of type 'Microsoft.Resources/deployments'. The client '<guid>' with object id '<guid>' does not have permission to perform action 'Microsoft.Resources/deployments/write' at scope '/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Resources/deplo
+Guardrail: PASS. The plan identity was refused (no deployments/write).
