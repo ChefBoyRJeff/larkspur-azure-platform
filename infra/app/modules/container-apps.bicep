@@ -10,7 +10,10 @@
 // - External (internal: false): the tracking API is customer-facing; the data tier stays private.
 // - infrastructureResourceGroup = rg-lark-app-infra so the budget covers the load balancer + public IPs the platform
 //   creates. It's deleted automatically with the environment.
-// - Logs go to the persistent workspace in rg-lark-data so they survive the session teardown.
+// - Logs go to the persistent workspace in rg-lark-data through an Azure Monitor diagnostic setting (M5). The M4a
+//   version used destination 'log-analytics', which reads the workspace's shared key at deploy time: whoever deploys
+//   (or even runs what-if) would need permission to read that key. A diagnostic setting needs no key, and the logs
+//   land in the resource-specific tables (ContainerAppConsoleLogs, ContainerAppSystemLogs).
 // - peerAuthentication / peerTrafficConfiguration declared at Azure's defaults (off), so what-if shows no drift.
 //   Both apply to app-to-app traffic inside the environment; this design has one app, so there's nothing to encrypt
 //   between apps yet (noted as a production improvement).
@@ -117,12 +120,23 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
       }
     }
     appLogsConfiguration: {
-      destination: 'log-analytics'
-      logAnalyticsConfiguration: {
-        customerId: workspace.properties.customerId
-        sharedKey: workspace.listKeys().primarySharedKey
-      }
+      destination: 'azure-monitor'
     }
+  }
+}
+
+resource environmentDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'diag-to-log-lark'
+  scope: environment
+  properties: {
+    workspaceId: workspace.id
+    logAnalyticsDestinationType: 'Dedicated'
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+      }
+    ]
   }
 }
 

@@ -1,0 +1,17 @@
+{
+  "Name": "Larkspur What-If Reader",
+  "IsCustom": true,
+  "Description": "Read resources and preview (what-if) or validate deployments of the Larkspur app stack. Cannot create, change or delete anything. Used by pull request validation in larkspur-azure-platform.",
+  "Actions": [
+    "*/read",
+    "Microsoft.Resources/deployments/whatIf/action",
+    "Microsoft.Resources/deployments/validate/action"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/{subscriptionId}/resourceGroups/rg-lark-app",
+    "/subscriptions/{subscriptionId}/resourceGroups/rg-lark-data"
+  ]
+}

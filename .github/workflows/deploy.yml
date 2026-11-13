@@ -1,0 +1,162 @@
+# Start a Larkspur session: deploy the app stack, migrate, smoke-test, and prove there's no drift.
+#
+# Deliberate, not automatic: the app stack is torn down after every session (cost), so a push to main doesn't deploy.
+# I start a session by running this workflow; the "production" environment makes it wait for my approval, and only
+# that environment's OIDC subject is trusted by gh-lark-deploy.
+#
+# The image is pinned to an exact commit-SHA tag (by default the last commit that changed app/), verified to exist in
+# GHCR before anything is deployed.
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (a commit SHA). Leave empty to use the last commit that changed app/.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: larkspur-session
+  cancel-in-progress: false
+
+env:
+  BICEP_VERSION: v0.48.1
+  AZURE_CORE_NO_COLOR: 'true'
+  GUID_PATTERN: '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
+  IMAGE_REPO: chefboyrjeff/larkspur-tracking-api
+  RG: rg-lark-app
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    name: Deploy app stack (production)
+    runs-on: ubuntu-24.04
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0          # full history, to find the last commit that changed app/
+
+      - name: Resolve and verify the image (anonymous pull check)
+        env:
+          INPUT_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          # app-image publishes one tag per commit that changes app/, so the image for the current code is the
+          # last commit that touched app/ (infrastructure-only commits don't produce a new image).
+          TAG="${INPUT_TAG:-$(git log -1 --format=%H -- app)}"
+          token=$(curl -fsS "https://ghcr.io/token?scope=repository:${IMAGE_REPO}:pull" | jq -r .token)
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json' \
+            "https://ghcr.io/v2/${IMAGE_REPO}/manifests/${TAG}")
+          if [ "$code" != "200" ]; then
+            echo "::error::Image ghcr.io/${IMAGE_REPO}:${TAG} not found (HTTP $code). Run app-image for this commit first, or pass image_tag."
+            exit 1
+          fi
+          echo "LARK_IMAGE=ghcr.io/${IMAGE_REPO}:${TAG}" >> "$GITHUB_ENV"
+          echo "**Image:** \`ghcr.io/${IMAGE_REPO}:${TAG}\` (verified, public)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install pinned Bicep
+        run: az bicep install --version "$BICEP_VERSION"
+
+      - name: Azure login (OIDC, deploy identity)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: What-if, deploy
+        env:
+          SUB_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          clean() { sed -E -e "s/$SUB_ID/<subscription>/g" -e "s/$GUID_PATTERN/<guid>/g"; }
+          ARGS=(--resource-group "$RG" --template-file infra/app/main.bicep --parameters infra/app/main.bicepparam)
+          echo "::group::What-if before deploy"
+          az deployment group what-if "${ARGS[@]}" --name "whatif-$GITHUB_RUN_NUMBER" 2>&1 | clean | tee before.txt
+          echo "::endgroup::"
+          echo "**What-if before deploy:** $(grep -E '^Resource changes' before.txt || echo 'n/a')" >> "$GITHUB_STEP_SUMMARY"
+          echo "::group::Deploy (the Container Apps environment can take 5-15 minutes)"
+          if ! az deployment group create "${ARGS[@]}" --name lark-app --query properties.provisioningState -o tsv 2> err.txt; then
+            clean < err.txt | cut -c1-800
+            echo "::endgroup::"
+            echo "::group::Failed operations (root cause)"
+            for d in lark-app lark-network lark-private-endpoints lark-container-apps; do
+              az deployment operation group list -g "$RG" -n "$d" -o json 2>/dev/null \
+                | jq -r --arg d "$d" '.[] | select(.properties.provisioningState == "Failed")
+                    | "\($d): \(.properties.targetResource.resourceName // "?"): \(.properties.statusMessage.error.code // ""): \(.properties.statusMessage.error.message // "" | .[0:400])"' || true
+            done | clean | tee failed-ops.txt
+            az deployment operation group list -g rg-lark-data -n lark-dns-links -o json 2>/dev/null \
+              | jq -r '.[] | select(.properties.provisioningState == "Failed") | "lark-dns-links: \(.properties.statusMessage.error.code // ""): \(.properties.statusMessage.error.message // "" | .[0:400])"' \
+              | clean | tee -a failed-ops.txt || true
+            echo "::endgroup::"
+            { echo '**Deploy: FAILED**'; echo '```'; cat failed-ops.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "::endgroup::"
+          echo "**Deploy:** Succeeded" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Migrate (job inside the VNet)
+        run: |
+          set -euo pipefail
+          az extension add --name containerapp --upgrade --only-show-errors
+          exec=$(az containerapp job start -g "$RG" -n job-lark-migrate --query name -o tsv)
+          state=""
+          for i in $(seq 1 40); do
+            sleep 15
+            state=$(az containerapp job execution show -g "$RG" -n job-lark-migrate --job-execution-name "$exec" --query properties.status -o tsv)
+            [ "$state" = "Succeeded" ] || [ "$state" = "Failed" ] && break
+          done
+          echo "migration $exec: $state"
+          echo "**Migration:** $state" >> "$GITHUB_STEP_SUMMARY"
+          [ "$state" = "Succeeded" ] || { echo "::error::Migration job did not succeed ($state). Query ContainerAppConsoleLogs in log-lark for LARK-MIGRATE lines."; exit 1; }
+
+      - name: Smoke tests from the internet
+        run: |
+          set -euo pipefail
+          fqdn=$(az containerapp show -g "$RG" -n ca-lark-tracking-api --query properties.configuration.ingress.fqdn -o tsv)
+          check() {   # path expected-status
+            local code=""
+            for i in $(seq 1 8); do
+              code=$(curl -s -o body.json -w '%{http_code}' --max-time 120 "https://$fqdn$1" || true)
+              [ "$code" != "000" ] && [ "$code" != "502" ] && [ "$code" != "504" ] && break
+              sleep 15
+            done
+            echo "GET $1 -> $code (expect $2): $(head -c 300 body.json)"
+            echo "- \`GET $1\` → $code (expect $2)" >> "$GITHUB_STEP_SUMMARY"
+            [ "$code" = "$2" ]
+          }
+          echo '**Smoke tests**' >> "$GITHUB_STEP_SUMMARY"
+          check /healthz 200
+          check /readyz 200
+          # /readyz must also prove the app resolved SQL to its private endpoint, not a public IP
+          jq -e '.ready == true and (.checks.sql_dns.address | startswith("10.60.1."))' body.json > /dev/null
+          check /shipments/LRK100001 200
+          check /shipments/LRK999999 404
+          check /shipments/not-a-number 400
+
+      - name: Idempotency (what-if after deploy, known noise filtered)
+        run: |
+          set -euo pipefail
+          az deployment group what-if --resource-group "$RG" --template-file infra/app/main.bicep \
+            --parameters infra/app/main.bicepparam --name "whatif-after-$GITHUB_RUN_NUMBER" --no-pretty-print -o json > after.json
+          jq -f scripts/whatif-drift.jq after.json > drift.json
+          count=$(jq length drift.json)
+          if [ "$count" -ne 0 ]; then
+            jq -r '.[] | "\(.resource): \(.path) (\(.change))"' drift.json
+            { echo "**Idempotency: FAIL.** $count real change(s) after deploy:"; echo '```'; jq -r '.[] | "\(.resource): \(.path) (\(.change))"' drift.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "**Idempotency: PASS.** No drift after filtering documented what-if noise." >> "$GITHUB_STEP_SUMMARY"

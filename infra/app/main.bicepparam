@@ -14,7 +14,8 @@ param dataResourceGroupName = 'rg-lark-data'
 param sqlLocation = 'centralus'
 param logAnalyticsWorkspaceName = 'log-lark'
 param containerAppsInfraResourceGroupName = 'rg-lark-app-infra'
-param containerImage = 'ghcr.io/chefboyrjeff/larkspur-tracking-api:main'
+// The deploy workflow sets LARK_IMAGE to the exact commit-SHA tag it verified in GHCR; local runs fall back to :main.
+param containerImage = readEnvironmentVariable('LARK_IMAGE', 'ghcr.io/chefboyrjeff/larkspur-tracking-api:main')
 param sqlDatabaseName = 'sqldb-lark-tracking'
 param appIdentityName = 'id-lark-tracking-api'
 param migratorIdentityName = 'id-lark-migrator'

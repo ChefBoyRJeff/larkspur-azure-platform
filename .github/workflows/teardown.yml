@@ -1,0 +1,42 @@
+# End a Larkspur session: remove everything inside rg-lark-app (and vnet-lark's DNS zone links), keep the group and
+# its guardrails, keep the persistent data tier. Same approval gate and identity as deploy.
+name: teardown
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: larkspur-session
+  cancel-in-progress: false
+
+jobs:
+  teardown:
+    name: Tear down app stack (production)
+    runs-on: ubuntu-24.04
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Azure login (OIDC, deploy identity)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Remove app stack resources (waits for the Container Apps managed group)
+        shell: pwsh
+        run: |
+          ./scripts/Remove-LarkAppResources.ps1 *>&1 | Tee-Object -FilePath teardown.txt
+          $left = az resource list --resource-group rg-lark-app --query "length([])" -o tsv
+          $infra = az group exists --name rg-lark-app-infra
+          "**Teardown:** rg-lark-app resources left: $left; rg-lark-app-infra exists: $infra" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          if ($left -ne '0') { Write-Error "rg-lark-app still has $left resource(s)" }
