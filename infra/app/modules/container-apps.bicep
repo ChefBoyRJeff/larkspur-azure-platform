@@ -15,7 +15,7 @@
 //   deployment, and even what-if had to read it. With a diagnostic setting the key never appears in the template or the
 //   deployment history, and what-if needs only read. Azure still checks the linked workspace at deploy time, so the
 //   deploy identity needs Microsoft.OperationalInsights/workspaces/sharedKeys/action on log-lark (INC-003). Logs land in
-//   the resource-specific tables (ContainerAppConsoleLogs, ContainerAppSystemLogs).
+//   the resource-specific tables (ContainerAppConsoleLogs, ContainerAppSystemLogs), per the Container Apps docs.
 // - peerAuthentication / peerTrafficConfiguration declared at Azure's defaults (off), so what-if shows no drift.
 //   Both apply to app-to-app traffic inside the environment; this design has one app, so there's nothing to encrypt
 //   between apps yet (noted as a production improvement).
@@ -127,16 +127,37 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
+// Declared exactly as Azure stores it (M5 idempotency check): Azure adds the 'audit' group and AllMetrics as disabled
+// entries and a zero retention policy to each. logAnalyticsDestinationType is left out: Azure stored null when it was
+// set to 'Dedicated', so declaring it only produced what-if drift. Which table the logs land in is checked with KQL
+// (M5 evidence), not assumed.
+var noRetention = {
+  days: 0
+  enabled: false
+}
+
 resource environmentDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'diag-to-log-lark'
   scope: environment
   properties: {
     workspaceId: workspace.id
-    logAnalyticsDestinationType: 'Dedicated'
     logs: [
       {
         categoryGroup: 'allLogs'
         enabled: true
+        retentionPolicy: noRetention
+      }
+      {
+        categoryGroup: 'audit'
+        enabled: false
+        retentionPolicy: noRetention
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: false
+        retentionPolicy: noRetention
       }
     ]
   }
