@@ -1,0 +1,27 @@
+=== Initialize-LarkPipeline, 11-13-2026 09:42 EST, repo ChefBoyRJeff/larkspur-azure-platform ===
+--- 1. Custom roles ---
+  exists   Larkspur What-If Reader
+  exists   Larkspur Data-Tier Integrator
+--- 2. App registrations and service principals ---
+  exists   app gh-lark-plan
+  exists   service principal gh-lark-plan
+  exists   app gh-lark-deploy
+  exists   service principal gh-lark-deploy
+--- 3. Federated credentials ---
+  exists   gh-lark-plan <- repo:ChefBoyRJeff@156028335/larkspur-azure-platform@1455796267:pull_request
+  exists   gh-lark-deploy <- repo:ChefBoyRJeff@156028335/larkspur-azure-platform@1455796267:environment:production
+--- 4. Role assignments ---
+  exists   gh-lark-plan -> Larkspur What-If Reader @ rg-lark-app
+  created  gh-lark-plan -> Larkspur What-If Reader @ rg-lark-data
+  created  gh-lark-deploy -> Contributor @ rg-lark-app
+  created  gh-lark-deploy -> Larkspur Data-Tier Integrator @ rg-lark-data
+--- 5. Verify ---
+  gh-lark-plan    secrets=0 certificates=0 (expect 0 and 0)
+  gh-lark-plan    trusts repo:ChefBoyRJeff@156028335/larkspur-azure-platform@1455796267:pull_request
+  gh-lark-plan    Larkspur What-If Reader        @ resource group rg-lark-app
+  gh-lark-plan    Larkspur What-If Reader        @ resource group rg-lark-data
+  gh-lark-deploy  secrets=0 certificates=0 (expect 0 and 0)
+  gh-lark-deploy  trusts repo:ChefBoyRJeff@156028335/larkspur-azure-platform@1455796267:environment:production
+  gh-lark-deploy  Contributor                    @ resource group rg-lark-app
+  gh-lark-deploy  Larkspur Data-Tier Integrator  @ resource group rg-lark-data
+Done.

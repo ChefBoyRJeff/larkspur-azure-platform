@@ -1,0 +1,142 @@
+# Pull request validation for infrastructure changes.
+#   lint       lint every Bicep entry point and type-check every parameter file (no Azure access)
+#   whatif     preview the app stack as gh-lark-plan (read + what-if only) and post the result to the run summary
+#   guardrail  prove gh-lark-plan cannot deploy: a real deployment attempt must be refused
+name: validate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - 'identity/**'
+      - 'scripts/**'
+      - 'bicepconfig.json'
+      - '.github/workflows/validate.yml'
+      - '.github/workflows/deploy.yml'
+      - '.github/workflows/teardown.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  BICEP_VERSION: v0.48.1
+  AZURE_CORE_NO_COLOR: 'true'
+  GUID_PATTERN: '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lint:
+    name: Lint and build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Bicep
+        run: az bicep install --version "$BICEP_VERSION" && az bicep version
+
+      - name: Lint Bicep entry points (bicepconfig.json rules, warnings are errors)
+        run: |
+          for f in infra/budget.bicep infra/governance/main.bicep infra/data/main.bicep infra/app/main.bicep; do
+            echo "lint $f"
+            az bicep lint --file "$f"
+          done
+
+      - name: Type-check parameter files
+        run: |
+          for f in infra/budget.example.bicepparam infra/governance/main.example.bicepparam \
+                   infra/data/main.example.bicepparam infra/app/main.bicepparam; do
+            echo "build-params $f"
+            az bicep build-params --file "$f" --stdout > /dev/null
+          done
+
+  whatif:
+    name: What-if (app stack)
+    needs: lint
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Bicep
+        run: az bicep install --version "$BICEP_VERSION"
+
+      - name: Azure login (OIDC, plan identity)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_PLAN }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: What-if against rg-lark-app
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SUB_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          # ProviderNoRbac: full template validation, but the permission check only needs read access.
+          az deployment group what-if \
+            --resource-group rg-lark-app \
+            --name "pr-$PR_NUMBER" \
+            --template-file infra/app/main.bicep \
+            --parameters infra/app/main.bicepparam \
+            --validation-level ProviderNoRbac > whatif.txt
+          sed -E -e "s/$SUB_ID/<subscription>/g" -e "s/$GUID_PATTERN/<guid>/g" whatif.txt > whatif-clean.txt
+          cat whatif-clean.txt
+          { echo '## What-if: app stack (rg-lark-app)'; echo '```'; cat whatif-clean.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  guardrail:
+    name: Guardrail - plan identity cannot deploy
+    needs: lint
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Bicep
+        run: az bicep install --version "$BICEP_VERSION"
+
+      - name: Azure login (OIDC, plan identity)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_PLAN }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Attempt a real deployment (must be refused)
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set +e
+          out=$(az deployment group create --resource-group rg-lark-app --name "guardrail-pr-$PR_NUMBER" \
+            --template-file infra/app/main.bicep --parameters infra/app/main.bicepparam 2>&1)
+          rc=$?
+          set -e
+          echo "$out" | sed -E "s/$GUID_PATTERN/<guid>/g" | cut -c1-800
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::The plan identity deployed successfully. Its role is too broad; fix it before merging."
+            exit 1
+          fi
+          if echo "$out" | grep -Eq 'AuthorizationFailed|Authorization failed for template resource' \
+             && echo "$out" | grep -q "Microsoft.Resources/deployments/write"; then
+            echo "## Guardrail: PASS. The plan identity was refused (no deployments/write)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::The deployment failed, but not with an authorization refusal. Check the output above."
+            exit 1
+          fi
