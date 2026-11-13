@@ -1,4 +1,4 @@
-=== M3-01: data tier (SQL, Key Vault) + private endpoints, 11-12-2026 16:27 EST ===
+=== M3-01: data tier (SQL, Key Vault) + private endpoints, 11-12-2026 04:27 PM EST ===
 lark-sql-admins members: D:\Development\larkspur-azure-platform>  "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\\..\python.exe" -IBm azure.cli ad group member list --group lark-sql-admins --query length(@) -o tsv (expect 1)
 --- lint infra\data\main.bicep ---
 WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".

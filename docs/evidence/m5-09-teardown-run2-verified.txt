@@ -1,0 +1,11 @@
+=== M5 teardown run 2 (workflow run 43464266784), 11-13-2026 11:35 AM EST, after PR #4 (INC-004 fix), as gh-lark-deploy ===
+Result: SUCCESS. Stack was already empty, so this run proves the checks, not the deletes.
+
+=== Teardown: rg-lark-app (links in rg-lark-data), 11-13-2026 11:36 AM EST ===
+no link        privatelink.database.windows.net/link-vnet-lark
+no link        privatelink.vaultcore.azure.net/link-vnet-lark
+verified       rg-lark-app is empty
+verified       rg-lark-app-infra is gone
+
+No 'Forbidden' lines: az group exists answered 'false' for rg-lark-app-infra, and the workflow's independent
+re-check (which now fails on any error, or if the group still exists) passed.

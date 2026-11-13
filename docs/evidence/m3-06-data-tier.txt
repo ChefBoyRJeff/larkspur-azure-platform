@@ -1,4 +1,4 @@
-=== M3-06: SQL in Central US, data tier, private endpoints, 11-12-2026 20:49 EST ===
+=== M3-06: SQL in Central US, data tier, private endpoints, 11-12-2026 08:49 PM EST ===
 --- deploy governance (exit 0) ---
 WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
 {
@@ -268,4 +268,4 @@ Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
 
 Resource changes: 4 to modify, 5 no change, 8 to ignore.
 
-BLOCK COMPLETED 11-12-2026 20:56 EST
+BLOCK COMPLETED 11-12-2026 08:56 PM EST

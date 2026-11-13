@@ -1,5 +1,5 @@
-=== M4a-02: end-of-session teardown (environment + managed group), 11-12-2026 21:57 EST ===
-=== Teardown: rg-lark-app (links in rg-lark-data), 11-12-2026 21:57 EST ===
+=== M4a-02: end-of-session teardown (environment + managed group), 11-12-2026 09:57 PM EST ===
+=== Teardown: rg-lark-app (links in rg-lark-data), 11-12-2026 09:57 PM EST ===
 deleted link   privatelink.database.windows.net/link-vnet-lark
 deleted link   privatelink.vaultcore.azure.net/link-vnet-lark
 deleted        Microsoft.App/containerApps/ca-lark-hello
@@ -25,4 +25,4 @@ sql-lark-jkw4epybg3jwc/master
 sql-lark-jkw4epybg3jwc/sqldb-lark-tracking
 log-lark
 
-TEARDOWN FINISHED 11-12-2026 22:26 EST
+TEARDOWN FINISHED 11-12-2026 10:26 PM EST

@@ -1,4 +1,4 @@
-=== Initialize-LarkPipeline, 11-13-2026 09:42 EST, repo ChefBoyRJeff/larkspur-azure-platform ===
+=== Initialize-LarkPipeline, 11-13-2026 09:42 AM EST, repo ChefBoyRJeff/larkspur-azure-platform ===
 --- 1. Custom roles ---
   exists   Larkspur What-If Reader
   exists   Larkspur Data-Tier Integrator

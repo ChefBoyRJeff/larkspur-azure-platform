@@ -1,4 +1,4 @@
-=== M5 deploy run 1 (workflow run 43449804999), started 11-13-2026 10:09 EST, approved in the production environment ===
+=== M5 deploy run 1 (workflow run 43449804999), started 11-13-2026 10:09 AM EST, approved in the production environment ===
 Steps: Resolve and verify image = success; Azure login (OIDC, gh-lark-deploy) = success; What-if, deploy = FAILED; Migrate, Smoke tests, Idempotency = skipped
 What-if before deploy: Resource changes: 14 to create, 9 to ignore.
 

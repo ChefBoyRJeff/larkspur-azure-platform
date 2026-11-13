@@ -1,4 +1,4 @@
-=== M2-01: network deploy (data + app stacks), 11-12-2026 16:04 EST ===
+=== M2-01: network deploy (data + app stacks), 11-12-2026 04:04 PM EST ===
 --- lint infra\data\main.bicep ---
 WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
 

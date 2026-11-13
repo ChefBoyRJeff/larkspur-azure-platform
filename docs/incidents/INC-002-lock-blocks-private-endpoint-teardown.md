@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Date** | 11-12-2026, 16:38–16:44 EST |
+| **Date** | 11-12-2026, 04:38 PM–04:44 PM EST |
 | **Milestone** | M3 (data and secrets) |
 | **Impact** | End-of-session teardown stopped; `pe-lark-kv` couldn't be deleted, so it would have kept billing (~$0.01/hr) |
 | **Status** | Resolved: lock moved to the database; Key Vault protected by soft delete + purge protection |

@@ -1,4 +1,4 @@
-=== M4a-01: Container Apps environment, ingress/egress, in-VNet DNS check, 11-12-2026 21:36 EST ===
+=== M4a-01: Container Apps environment, ingress/egress, in-VNet DNS check, 11-12-2026 09:36 PM EST ===
 --- deploy budget (exit 0) ---
 WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
 {
@@ -158,5 +158,5 @@ Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
 
 Resource changes: 4 to modify, 8 no change, 9 to ignore.
 
-BLOCK COMPLETED 11-12-2026 21:53 EST
-NOTE: Log Analytics TimeGenerated values are UTC. 11/13/2026 2:45:20 AM UTC = 11-12-2026 21:45 EST.
+BLOCK COMPLETED 11-12-2026 09:53 PM EST
+NOTE: Log Analytics TimeGenerated values are UTC. 11/13/2026 2:45:20 AM UTC = 11-12-2026 09:45 PM EST.
