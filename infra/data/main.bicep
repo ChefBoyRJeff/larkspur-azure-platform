@@ -1,6 +1,7 @@
 // larkspur-azure-platform: persistent data-tier resources in rg-lark-data.
 // M2: private DNS zones. M3: Azure SQL (free tier) and Key Vault, both private-only, both locked.
 // M4a: Log Analytics workspace (brought forward from M6 so Container Apps logs survive teardown).
+// M4b: persistent managed identities for the API and the migration job, with their Key Vault roles.
 //
 // Why these live here and not in rg-lark-app: they hold state (data, secrets, DNS records) and cost ~$0 when idle,
 // while rg-lark-app's contents are torn down every session.
@@ -68,6 +69,15 @@ module logAnalytics 'modules/log-analytics.bicep' = {
   }
 }
 
+module identities 'modules/identities.bicep' = {
+  name: 'lark-identities'
+  params: {
+    location: location
+    tags: tags
+    keyVaultName: keyVault.outputs.vaultName
+  }
+}
+
 output dnsZoneNames array = [for (zone, i) in dnsZoneNames: zones[i].name]
 output sqlServerName string = sql.outputs.serverName
 output sqlServerFqdn string = sql.outputs.serverFqdn
@@ -76,3 +86,7 @@ output keyVaultName string = keyVault.outputs.vaultName
 output keyVaultUri string = keyVault.outputs.vaultUri
 output logAnalyticsWorkspaceName string = logAnalytics.outputs.workspaceName
 output logAnalyticsCustomerId string = logAnalytics.outputs.customerId
+output appIdentityName string = identities.outputs.appIdentityName
+output appIdentityClientId string = identities.outputs.appIdentityClientId
+output migratorIdentityName string = identities.outputs.migratorIdentityName
+output migratorPrincipalId string = identities.outputs.migratorPrincipalId

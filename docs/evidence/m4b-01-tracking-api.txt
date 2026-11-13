@@ -1,0 +1,172 @@
+=== M4b-01: identities, tracking API, migration job, end-to-end test, 11-13-2026 08:44 EST ===
+infra\data\modules\identities.bicep         2928 bytes (expect 2928)
+infra\data\main.bicep                       3521 bytes (expect 3521)
+infra\app\modules\container-apps.bicep      8412 bytes (expect 8412)
+infra\app\main.bicep                        4762 bytes (expect 4762)
+infra\app\main.bicepparam                    731 bytes (expect 731)
+--- lint data (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+--- deploy data (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded"
+}
+
+--- identities (exit 0) ---
+Name                  Location    CostCenter
+--------------------  ----------  ------------
+id-lark-migrator      eastus      CC-LARK-01
+id-lark-tracking-api  eastus      CC-LARK-01
+
+--- Key Vault role assignments (exit 0) ---
+Principal                             Role
+------------------------------------  -------------------------
+<guid>  Key Vault Secrets User
+<guid>  Key Vault Secrets Officer
+
+--- add migrator to lark-sql-admins (exit 0) ---
+
+--- lark-sql-admins members (exit 0) ---
+Name
+----------
+Jeff Jones
+
+--- lint app (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+--- deploy app (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded"
+}
+
+--- tracking API revision (exit 0) ---
+Revision                       Image                                            Running     Health
+-----------------------------  -----------------------------------------------  ----------  --------
+ca-lark-tracking-api--adqqz3n  ghcr.io/chefboyrjeff/larkspur-tracking-api:main  Activating  None
+
+migration execution: job-lark-migrate-k3uqab5
+migration status: Succeeded (expect Succeeded)
+--- migration log (times EST) ---
+
+TimeEST             Log_s
+-------             -----
+11-13-2026 08:51:12 LARK-MIGRATE schema ok: dbo.Shipments
+11-13-2026 08:51:12 LARK-MIGRATE seeded 5 shipments
+11-13-2026 08:51:12 LARK-MIGRATE app user id-lark-tracking-api: SELECT on Shipments
+11-13-2026 08:51:13 LARK-MIGRATE secret carrier-api-key: created (value generated, not printed)
+11-13-2026 08:51:13 LARK-MIGRATE completed
+
+
+--- GET /healthz -> HTTP 200 ---
+{"status":"ok"}
+--- GET /readyz -> HTTP 200 ---
+{"ready":true,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.5"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}}}
+--- GET /shipments/LRK100001 -> HTTP 200 ---
+{"trackingNumber":"LRK100001","origin":"Larkspur HQ","destination":"North Depot","status":"Delivered","lastUpdatedUtc":"2026-11-13T13:51:11Z"}
+--- GET /shipments/LRK999999 -> HTTP 404 ---
+{"detail":"Shipment not found."}
+--- GET /shipments/not-a-number -> HTTP 400 ---
+{"detail":"Tracking numbers look like LRK123456."}
+--- what-if again: app ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  - Delete
+  ~ Modify
+  = Nochange
+  * Ignore
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  ~ Microsoft.App/containerApps/ca-lark-tracking-api [2024-03-01]
+    - properties.configuration.ingress.exposedPort: 0
+    - properties.runningStatus:                     "Running"
+    ~ properties.template.containers: [
+      ~ 0:
+
+        ~ env: [
+          ~ 4:
+
+            ~ value: "<guid>" => "[reference('/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-lark-tracking-api', '2023-01-31').clientId]"
+
+          ]
+
+      ]
+
+  ~ Microsoft.App/jobs/job-lark-migrate [2024-03-01]
+    ~ properties.template.containers: [
+      ~ 0:
+
+        ~ env: [
+          ~ 4:
+
+            ~ value: "<guid>" => "[reference('/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-lark-migrator', '2023-01-31').clientId]"
+
+          ~ 6:
+
+            ~ value: "<guid>" => "[reference('/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-lark-tracking-api', '2023-01-31').clientId]"
+
+          ]
+
+      ]
+
+  ~ Microsoft.App/managedEnvironments/cae-lark [2024-03-01]
+    ~ properties.appLogsConfiguration.logAnalyticsConfiguration.customerId: "<guid>" => "[reference('/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.OperationalInsights/workspaces/log-lark', '2023-09-01').customerId]"
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default [2024-05-01]
+    ~ properties.privateDnsZoneConfigs: [
+      ~ 0:
+
+        - etag:                         "W/"<guid>""
+        - id:                           "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default/privateDnsZoneConfigs/privatelink-vaultcore-azure-net"
+        - properties.provisioningState: "Succeeded"
+        - type:                         "Microsoft.Network/privateEndpoints/privateDnsZoneGroups/privateDnsZoneConfigs"
+
+      ]
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default [2024-05-01]
+    ~ properties.privateDnsZoneConfigs: [
+      ~ 0:
+
+        - etag:                         "W/"<guid>""
+        - id:                           "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default/privateDnsZoneConfigs/privatelink-database-windows-net"
+        - properties.provisioningState: "Succeeded"
+        - type:                         "Microsoft.Network/privateEndpoints/privateDnsZoneGroups/privateDnsZoneConfigs"
+
+      ]
+
+  = Microsoft.App/jobs/job-lark-dnscheck [2024-03-01]
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-aca [2024-05-01]
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-pe [2024-05-01]
+  = Microsoft.Network/privateEndpoints/pe-lark-kv [2024-05-01]
+  = Microsoft.Network/privateEndpoints/pe-lark-sql [2024-05-01]
+  = Microsoft.Network/virtualNetworks/vnet-lark [2024-05-01]
+  * Microsoft.Network/networkInterfaces/nic-pe-lark-kv
+  * Microsoft.Network/networkInterfaces/nic-pe-lark-sql
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  = Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  = Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  * Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws
+  * Microsoft.ManagedIdentity/userAssignedIdentities/id-lark-migrator
+  * Microsoft.ManagedIdentity/userAssignedIdentities/id-lark-tracking-api
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net
+  * Microsoft.OperationalInsights/workspaces/log-lark
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/master
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking
+
+Resource changes: 5 to modify, 8 no change, 11 to ignore.
+
+BLOCK COMPLETED 11-13-2026 08:52 EST

@@ -1,7 +1,7 @@
 // larkspur-azure-platform: application stack in rg-lark-app.
 // The resource group itself is persistent (it carries the M1 policy and RBAC assignments); everything inside it is
 // torn down at the end of every session by scripts/Remove-LarkAppResources.ps1 and redeployed from this template.
-// M2: network and private DNS links. M3: private endpoints to SQL and Key Vault. M4a: Container Apps environment.
+// M2: network and private DNS links. M3: private endpoints to SQL and Key Vault. M4a: Container Apps environment. M4b: tracking API + migration job.
 targetScope = 'resourceGroup'
 
 import { larkSqlServerName, larkKeyVaultName } from '../shared/naming.bicep'
@@ -32,6 +32,18 @@ param logAnalyticsWorkspaceName string
 
 @description('Name for the platform-managed resource group the Container Apps environment creates (load balancer, public IPs)')
 param containerAppsInfraResourceGroupName string
+
+@description('Container image for the tracking API and the migration job')
+param containerImage string
+
+@description('SQL database name (created by infra/data)')
+param sqlDatabaseName string
+
+@description('User-assigned identity of the tracking API (created by infra/data)')
+param appIdentityName string
+
+@description('User-assigned identity of the migration job (created by infra/data)')
+param migratorIdentityName string
 
 // Must match the zone names created by infra/data/main.bicep.
 var dnsZoneNames = [
@@ -89,7 +101,11 @@ module containerApps 'modules/container-apps.bicep' = {
     dataResourceGroupName: dataResourceGroupName
     logAnalyticsWorkspaceName: logAnalyticsWorkspaceName
     sqlServerFqdn: '${sqlServerName}${environment().suffixes.sqlServerHostname}'
+    sqlDatabaseName: sqlDatabaseName
     keyVaultFqdn: '${keyVaultName}${environment().suffixes.keyvaultDns}'
+    containerImage: containerImage
+    appIdentityName: appIdentityName
+    migratorIdentityName: migratorIdentityName
   }
   // The DNS check is only meaningful once the private A records and VNet links exist.
   dependsOn: [
@@ -104,5 +120,6 @@ output peSubnetId string = network.outputs.peSubnetId
 output linkedZones array = dnsLinks.outputs.linkedZones
 output privateEndpoints array = privateEndpoints.outputs.privateEndpointNames
 output containerAppsEnvironment string = containerApps.outputs.environmentName
-output helloFqdn string = containerApps.outputs.helloFqdn
+output apiFqdn string = containerApps.outputs.apiFqdn
+output migrateJobName string = containerApps.outputs.migrateJobName
 output dnsCheckJobName string = containerApps.outputs.dnsCheckJobName

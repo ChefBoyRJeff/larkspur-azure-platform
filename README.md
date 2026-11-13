@@ -1,6 +1,6 @@
 # Larkspur Logistics Azure Platform
 
-> **Status:** in progress. M0–M4a delivered; next is M4b (the shipment-tracking app with a managed identity).
+> **Status:** in progress. M0–M4b delivered; next is M5 (deployment pipeline with GitHub Actions and OIDC).
 > See [docs/plan.md](docs/plan.md) for the full plan and acceptance criteria.
 
 ## Scenario
@@ -20,13 +20,16 @@ landing zone architecture, and it is not a production system serving real custom
                            │
                           vnet-lark 10.60.0.0/16  (East US, rg-lark-app: rebuilt every session)
                           ├─ snet-aca 10.60.0.0/27   cae-lark (Container Apps, Consumption, external)
-                          │                          ├─ ca-lark-hello      test app (M4a; replaced in M4b)
-                          │                          └─ job-lark-dnscheck  resolves the data tier from inside the VNet
+                          │                          ├─ ca-lark-tracking-api  API, identity id-lark-tracking-api
+                          │                          ├─ job-lark-migrate      schema/seed/app user/secret, identity id-lark-migrator
+                          │                          └─ job-lark-dnscheck     resolves the data tier from inside the VNet
                           └─ snet-pe  10.60.1.0/27   NSG: only snet-aca → 1433 / 443
                                ├─ pe-lark-sql 10.60.1.5 ──▶ sql-lark-… (Central US) ─ sqldb-lark-tracking (free tier, locked)
                                └─ pe-lark-kv  10.60.1.4 ──▶ kv-lark-… (East US, purge protection)
 
-  rg-lark-data (persistent): SQL server + database, Key Vault, private DNS zones, log-lark (Log Analytics)
+  rg-lark-data (persistent): SQL server + database, Key Vault, private DNS zones, log-lark (Log Analytics),
+                             managed identities id-lark-tracking-api and id-lark-migrator
+  Image: ghcr.io/chefboyrjeff/larkspur-tracking-api (public GHCR package, built by GitHub Actions)
     privatelink.database.windows.net   A sql-lark-… → 10.60.1.5   (written by the endpoint's DNS zone group)
     privatelink.vaultcore.azure.net    A kv-lark-…  → 10.60.1.4
 
@@ -45,11 +48,17 @@ landing zone architecture, and it is not a production system serving real custom
 ## Repository structure
 
 ```
+app/
+  larkspur/                    FastAPI shipment-tracking API + migration entry point (python -m larkspur.migrate)
+  tests/                       unit tests (run in CI without Azure)
+  Dockerfile                   Python 3.12 slim + ODBC Driver 18, non-root
+.github/workflows/
+  app-image.yml                test, build and publish the image to GHCR
 infra/
   budget.bicep                 $5/month budget on both resource groups (subscription scope)
   governance/                  resource groups, policy assignments, group RBAC (subscription scope)
   shared/naming.bicep          globally unique names, shared by both stacks
-  data/                        rg-lark-data: private DNS zones, SQL + database, Key Vault, Log Analytics (persistent)
+  data/                        rg-lark-data: private DNS zones, SQL + database, Key Vault, Log Analytics, identities (persistent)
   app/                         rg-lark-app: VNet, NSGs, DNS links, private endpoints, Container Apps (rebuilt each session)
 scripts/
   Remove-LarkAppResources.ps1  end-of-session teardown
@@ -71,7 +80,8 @@ generated from the committed `*.example.bicepparam` files.
 | M2 Network | ✅ Delivered 11-12-2026 | [`docs/evidence/m2-*`](docs/evidence/) |
 | M3 Data and secrets | ✅ Delivered 11-12-2026 | [`docs/evidence/m3-*`](docs/evidence/), [INC-001](docs/incidents/INC-001-sql-region-restricted.md), [INC-002](docs/incidents/INC-002-lock-blocks-private-endpoint-teardown.md) |
 | M4a Container Apps environment | ✅ Delivered 11-12-2026 | [`docs/evidence/m4a-*`](docs/evidence/) |
-| M4b–M9 | Not started | |
+| M4b Shipment-tracking API | ✅ Delivered 11-13-2026 | [`docs/evidence/m4b-*`](docs/evidence/) |
+| M5–M9 | Not started | |
 
 ### M0: Prerequisites
 
@@ -309,6 +319,69 @@ then, so I start teardown as soon as I'm done with a session.
 | `ca-lark-hello` `traffic`, `maxInactiveRevisions`, `exposedPort`, `runningStatus` | Defaults plus a read-only status on the stand-in app. The M4b app module declares the settable ones. |
 | DNS zone groups | Known read-only noise (see M3) |
 
+### M4b: Shipment-tracking API
+
+**What I built**
+
+- `app/`: a small FastAPI service. `GET /healthz` checks the process is alive, `GET /readyz` checks private DNS, SQL
+  and Key Vault through the managed identity, and `GET /shipments/{trackingNumber}` returns a shipment. Tracking
+  numbers are validated (`LRK` + 6 digits) before any database call.
+- `app/larkspur/migrate.py`: an idempotent migration that runs as a Container Apps job. It creates `dbo.Shipments`,
+  seeds 5 synthetic shipments, creates the app's database user with `SELECT` on that one table, and generates the
+  carrier API key in Key Vault without ever printing it.
+- `.github/workflows/app-image.yml`: runs the unit tests, builds the image and publishes it to GitHub Container
+  Registry. It needs no Azure credentials.
+- `infra/data/modules/identities.bicep`: persistent user-assigned identities `id-lark-tracking-api` (Key Vault
+  Secrets User) and `id-lark-migrator` (Key Vault Secrets Officer, and a member of `lark-sql-admins`).
+- `infra/app/modules/container-apps.bicep`: `ca-lark-tracking-api` and `job-lark-migrate`, both running my image.
+
+**Key decisions**
+
+- **No passwords anywhere.** The app gets an Entra token from its managed identity and passes it to the ODBC
+  driver. There's no connection-string secret to store, rotate or leak.
+- **Two identities, two blast radiuses.** The API can only read shipments and read secrets. Database administration
+  belongs to the migrator, which is an admin only through the `lark-sql-admins` group. If the API were compromised,
+  it couldn't change or drop data.
+- **The app's database user is created by SID** (`CREATE USER … WITH SID = <client ID>, TYPE = E`). The usual
+  `FROM EXTERNAL PROVIDER` form makes SQL look the identity up in Microsoft Graph, which would mean granting the SQL
+  server directory-read permissions. Creating the user from the client ID avoids that.
+- **Persistent identities in `rg-lark-data`.** The app stack is rebuilt every session; an identity rebuilt with it
+  would get a new client ID each time, leaving stale database users and role assignments. The migration also
+  detects a client-ID mismatch and recreates the user if an identity is ever replaced.
+- **Migrations run as a job inside the VNet.** The database accepts no public connections, so schema changes run
+  from inside `vnet-lark`, the same pattern I proved with the DNS check in M4a.
+- **Probes hit `/healthz`, never `/readyz`.** A probe that touched the database every few seconds would stop the
+  free-tier database from auto-pausing and would fail every time it resumed.
+- **Public GHCR image instead of Azure Container Registry.** The image holds no secrets, and a public GHCR package
+  costs nothing, versus about $0.17/day for Container Registry Basic.
+
+**Verification** (11-13-2026)
+
+| Check | Result |
+|---|---|
+| Unit tests in GitHub Actions | ✅ 5 passed; image published as `:main` and `:<commit SHA>` |
+| Anonymous pull from GHCR | ✅ HTTP 200 (package is public) |
+| Identities and roles | ✅ both identities in `rg-lark-data`; each holds only its own Key Vault role |
+| `lark-sql-admins` | ✅ me + `id-lark-migrator` |
+| Migration job (08:51 EST) | ✅ schema ok, 5 shipments seeded, `id-lark-tracking-api: SELECT on Shipments`, secret created, completed |
+| `GET /healthz` | ✅ 200 |
+| `GET /readyz` | ✅ 200: SQL resolves to 10.60.1.5 (private endpoint), 5 shipments, secret present (value never returned) |
+| `GET /shipments/LRK100001` | ✅ 200 with the shipment, read by the managed identity over the private path |
+| `GET /shipments/LRK999999` | ✅ 404 |
+| `GET /shipments/not-a-number` | ✅ 400, rejected before any database call |
+| What-if after deploy | ✅ no real drift (below); the M4a environment drift is gone |
+
+**What-if after deploy**
+
+| Item | Classification |
+|---|---|
+| `AZURE_CLIENT_ID` / `APP_IDENTITY_CLIENT_ID` on the app and job, environment `customerId` | What-if can't resolve references into another resource group and shows the expression. The deployed values are correct: both identities authenticated. Accepted. |
+| App `exposedPort: 0`, `runningStatus` | `exposedPort` applies only to TCP ingress; `runningStatus` is read-only. Accepted. |
+| DNS zone groups | Known read-only noise (M3) |
+
+**Still to confirm:** Cost Analysis data lags about a day, so I'll check the next day that `rg-lark-app-infra` and
+Container Apps show no management-hour charge.
+
 ## Cost
 
 | Item | Running cost |
@@ -319,6 +392,8 @@ then, so I start teardown as soon as I'm done with a session.
 | Private endpoints (2) | ~$0.01/hr each, only while a session is running |
 | Container Apps environment infrastructure (load balancer + 2 public IPs) | ~$0.035–0.04/hr (estimate), only while a session is running |
 | Container Apps usage | within the monthly free grant (scale to zero) |
+| Container image (public GHCR package) | $0 |
+| Managed identities | $0 |
 | Log Analytics | within the free ingestion allowance; 0.1 GB/day cap |
 | Budget alert | $5/month on both resource groups |
 
