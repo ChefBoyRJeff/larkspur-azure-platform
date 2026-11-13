@@ -1,4 +1,4 @@
-=== M2-03: end-of-session teardown, 11-12-2026 16:12 EST ===
+=== M2-03: end-of-session teardown, 11-12-2026 04:12 PM EST ===
 === Teardown: rg-lark-app (links in rg-lark-data), 2026-11-12 16:12 ===
 deleted link   privatelink.database.windows.net/link-vnet-lark
 deleted link   privatelink.vaultcore.azure.net/link-vnet-lark

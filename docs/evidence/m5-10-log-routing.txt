@@ -1,0 +1,12 @@
+=== M5-10: log routing through diag-to-log-lark, checked 11-13-2026 12:03 PM EST ===
+Window: rows with TimeGenerated since 11-13-2026 10:25 AM EST (deploy run 2 created the diagnostic setting about 10:31 AM EST)
+
+Query:
+union isfuzzy=true
+ (ContainerAppConsoleLogs | where TimeGenerated >= datetime(2026-11-13T15:25:00Z) | summarize Rows = count(), First = min(TimeGenerated), Last = max(TimeGenerated) | extend Table = "ContainerAppConsoleLogs"),
+ (ContainerAppSystemLogs | where TimeGenerated >= datetime(2026-11-13T15:25:00Z) | summarize Rows = count(), First = min(TimeGenerated), Last = max(TimeGenerated) | extend Table = "ContainerAppSystemLogs")
+| project Table, Rows, First, Last
+
+Result:
+  ContainerAppSystemLogs    rows=24     first=11-13-2026 10:52 AM EST  last=11-13-2026 11:00 AM EST
+  ContainerAppConsoleLogs   rows=181    first=11-13-2026 10:53 AM EST  last=11-13-2026 11:00 AM EST

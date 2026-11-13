@@ -1,4 +1,4 @@
-=== M3-07: drift fixes, public-network test with a real Entra token, teardown, 11-12-2026 21:18 EST ===
+=== M3-07: drift fixes, public-network test with a real Entra token, teardown, 11-12-2026 09:18 PM EST ===
 --- lint data (exit 0) ---
 WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
 
@@ -120,7 +120,7 @@ Resource changes: 2 to modify, 7 no change, 8 to ignore.
 --- SQL from this PC with a valid Entra token (expect: Deny Public Network Access is set to Yes) ---
 refused: Reason: An instance-specific error occurred while establishing a connection to SQL Server. Connection was denied because Deny Public Network Access is set to Yes. For more information, see https://go.microsoft.com/fwlink/?linkid=2323206.
 SQL error number: 47073
-=== Teardown: rg-lark-app (links in rg-lark-data), 11-12-2026 21:21 EST ===
+=== Teardown: rg-lark-app (links in rg-lark-data), 11-12-2026 09:21 PM EST ===
 deleted link   privatelink.database.windows.net/link-vnet-lark
 deleted link   privatelink.vaultcore.azure.net/link-vnet-lark
 deleted        Microsoft.Network/privateEndpoints/pe-lark-kv
@@ -142,4 +142,4 @@ sql-lark-jkw4epybg3jwc                      centralus
 sql-lark-jkw4epybg3jwc/master               centralus
 sql-lark-jkw4epybg3jwc/sqldb-lark-tracking  centralus
 
-BLOCK COMPLETED 11-12-2026 21:24 EST
+BLOCK COMPLETED 11-12-2026 09:24 PM EST

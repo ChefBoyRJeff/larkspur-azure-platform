@@ -1,4 +1,4 @@
-=== M5 validate run for PR #1 (workflow run 43447775085), 11-13-2026 09:57 EST, branch m5-pipeline ===
+=== M5 validate run for PR #1 (workflow run 43447775085), 11-13-2026 09:57 AM EST, branch m5-pipeline ===
 Result: Lint and build = success (31s); What-if (app stack) = success (41s); Guardrail - plan identity cannot deploy = success (32s)
 
 --- What-if as gh-lark-plan (ProviderNoRbac), resource list ---

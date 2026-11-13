@@ -1,4 +1,4 @@
-=== M4b-01: identities, tracking API, migration job, end-to-end test, 11-13-2026 08:44 EST ===
+=== M4b-01: identities, tracking API, migration job, end-to-end test, 11-13-2026 08:44 AM EST ===
 infra\data\modules\identities.bicep         2928 bytes (expect 2928)
 infra\data\main.bicep                       3521 bytes (expect 3521)
 infra\app\modules\container-apps.bicep      8412 bytes (expect 8412)
@@ -169,4 +169,4 @@ Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
 
 Resource changes: 5 to modify, 8 no change, 11 to ignore.
 
-BLOCK COMPLETED 11-13-2026 08:52 EST
+BLOCK COMPLETED 11-13-2026 08:52 AM EST

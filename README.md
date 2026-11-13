@@ -1,6 +1,6 @@
 # Larkspur Logistics Azure Platform
 
-> **Status:** in progress. M0–M4b delivered; next is M5 (deployment pipeline with GitHub Actions and OIDC).
+> **Status:** in progress. M0–M5 delivered; next is M6 (alerts, a workbook and cost alerts).
 > See [docs/plan.md](docs/plan.md) for the full plan and acceptance criteria.
 
 ## Scenario
@@ -30,6 +30,8 @@ landing zone architecture, and it is not a production system serving real custom
   rg-lark-data (persistent): SQL server + database, Key Vault, private DNS zones, log-lark (Log Analytics),
                              managed identities id-lark-tracking-api and id-lark-migrator
   Image: ghcr.io/chefboyrjeff/larkspur-tracking-api (public GHCR package, built by GitHub Actions)
+  Pipeline: GitHub Actions with OIDC (no secrets). Pull requests: validate as gh-lark-plan (read + what-if only).
+            deploy / teardown: manual, behind my approval on the "production" environment, as gh-lark-deploy.
     privatelink.database.windows.net   A sql-lark-… → 10.60.1.5   (written by the endpoint's DNS zone group)
     privatelink.vaultcore.azure.net    A kv-lark-…  → 10.60.1.4
 
@@ -54,6 +56,10 @@ app/
   Dockerfile                   Python 3.12 slim + ODBC Driver 18, non-root
 .github/workflows/
   app-image.yml                test, build and publish the image to GHCR
+  validate.yml                 pull requests: lint, type checks, what-if, guardrail (plan identity can't deploy)
+  deploy.yml                   start a session: verify image, deploy, migrate, smoke tests, idempotency (approval)
+  teardown.yml                 end a session: remove the app stack and prove nothing is left billing (approval)
+identity/                      custom role definitions for the pipeline identities (JSON)
 infra/
   budget.bicep                 $5/month budget on both resource groups (subscription scope)
   governance/                  resource groups, policy assignments, group RBAC (subscription scope)
@@ -61,7 +67,9 @@ infra/
   data/                        rg-lark-data: private DNS zones, SQL + database, Key Vault, Log Analytics, identities (persistent)
   app/                         rg-lark-app: VNet, NSGs, DNS links, private endpoints, Container Apps (rebuilt each session)
 scripts/
-  Remove-LarkAppResources.ps1  end-of-session teardown
+  Remove-LarkAppResources.ps1  end-of-session teardown (run by teardown.yml, or by me locally)
+  Initialize-LarkPipeline.ps1  one-time admin setup: custom roles, OIDC app registrations, role assignments
+  whatif-drift.jq              idempotency filter: removes documented what-if noise, fails on anything else
 docs/
   plan.md                      plan, milestones, acceptance criteria, design changes
   incidents/                   incident reports (root cause, remediation, prevention)
@@ -81,7 +89,8 @@ generated from the committed `*.example.bicepparam` files.
 | M3 Data and secrets | ✅ Delivered 11-12-2026 | [`docs/evidence/m3-*`](docs/evidence/), [INC-001](docs/incidents/INC-001-sql-region-restricted.md), [INC-002](docs/incidents/INC-002-lock-blocks-private-endpoint-teardown.md) |
 | M4a Container Apps environment | ✅ Delivered 11-12-2026 | [`docs/evidence/m4a-*`](docs/evidence/) |
 | M4b Shipment-tracking API | ✅ Delivered 11-13-2026 | [`docs/evidence/m4b-*`](docs/evidence/) |
-| M5–M9 | Not started | |
+| M5 Deployment pipeline | ✅ Delivered 11-13-2026 | [`docs/evidence/m5-*`](docs/evidence/), [INC-003](docs/incidents/INC-003-pipeline-deploy-linked-scope-and-pending-delete.md), [INC-004](docs/incidents/INC-004-teardown-false-positive-verification.md) |
+| M6–M9 | Not started | |
 
 ### M0: Prerequisites
 
@@ -304,9 +313,9 @@ Azure adds to every zone config, and a template can't declare them. They don't i
 | DNS from inside the VNet | ✅ `sql-lark-….database.windows.net -> 10.60.1.5`, `kv-lark-….vault.azure.net -> 10.60.1.4` (match the endpoint NICs) |
 | Teardown | ✅ apps, job, environment, endpoints, VNet and NSGs deleted; `rg-lark-app-infra` removed by Azure; data tier intact |
 
-Log Analytics stores times in UTC; the DNS check ran at 02:45 UTC, which is 11-12-2026 21:45 EST.
+Log Analytics stores times in UTC; the DNS check ran at 02:45 UTC, which is 11-12-2026 09:45 PM EST.
 
-**Operational note:** deleting the environment is slow. My teardown took 29 minutes (21:57–22:26 EST), most of it
+**Operational note:** deleting the environment is slow. My teardown took 29 minutes (09:57 PM–10:26 PM EST), most of it
 waiting for the environment and its managed group to go away. The environment's load balancer and IPs bill until
 then, so I start teardown as soon as I'm done with a session.
 
@@ -363,7 +372,7 @@ then, so I start teardown as soon as I'm done with a session.
 | Anonymous pull from GHCR | ✅ HTTP 200 (package is public) |
 | Identities and roles | ✅ both identities in `rg-lark-data`; each holds only its own Key Vault role |
 | `lark-sql-admins` | ✅ me + `id-lark-migrator` |
-| Migration job (08:51 EST) | ✅ schema ok, 5 shipments seeded, `id-lark-tracking-api: SELECT on Shipments`, secret created, completed |
+| Migration job (08:51 AM EST) | ✅ schema ok, 5 shipments seeded, `id-lark-tracking-api: SELECT on Shipments`, secret created, completed |
 | `GET /healthz` | ✅ 200 |
 | `GET /readyz` | ✅ 200: SQL resolves to 10.60.1.5 (private endpoint), 5 shipments, secret present (value never returned) |
 | `GET /shipments/LRK100001` | ✅ 200 with the shipment, read by the managed identity over the private path |
@@ -382,6 +391,95 @@ then, so I start teardown as soon as I'm done with a session.
 **Still to confirm:** Cost Analysis data lags about a day, so I'll check the next day that `rg-lark-app-infra` and
 Container Apps show no management-hour charge.
 
+### M5: Deployment pipeline
+
+**What I built**
+
+- `.github/workflows/validate.yml`: runs on every pull request that touches infrastructure. It lints every Bicep
+  entry point against the rules I set to `error` in `bicepconfig.json`, type-checks every parameter file, runs
+  what-if against `rg-lark-app` and posts it to the run summary, and runs a **guardrail**: a real deployment attempt
+  as the plan identity that must be refused.
+- `.github/workflows/deploy.yml`: starts a session. It resolves the image tag, checks the image exists in GHCR,
+  deploys, runs the migration job, smoke-tests the API from the internet, then runs what-if again and fails on any
+  real drift.
+- `.github/workflows/teardown.yml`: ends a session with my teardown script, then re-checks independently that
+  `rg-lark-app` is empty and `rg-lark-app-infra` is gone.
+- `scripts/Initialize-LarkPipeline.ps1`: the one-time admin setup. It creates three custom roles, two app
+  registrations with GitHub OIDC federated credentials, and the role assignments. It's idempotent, syncs the roles
+  from their JSON files, and writes a log with names, roles and scopes only.
+- `scripts/whatif-drift.jq`: the idempotency filter. Each rule removes one documented kind of what-if noise;
+  anything left is drift and fails the deploy.
+
+**Identities** (no client secrets or certificates on either; both show `secrets=0 certificates=0`)
+
+| Identity | Trusted only for | Roles |
+|---|---|---|
+| `gh-lark-plan` | `pull_request` | Larkspur What-If Reader on `rg-lark-app` and `rg-lark-data`: `*/read`, what-if and validate. No `deployments/write`. |
+| `gh-lark-deploy` | `environment:production` (my approval required, `main` only) | Contributor on `rg-lark-app`; Larkspur Data-Tier Integrator on `rg-lark-data`; Larkspur Group Reader on the subscription |
+
+Larkspur Data-Tier Integrator covers exactly what the app stack touches in the data tier: the VNet links, private
+DNS records, auto-approval of the SQL and Key Vault private endpoint connections, attaching the two managed
+identities, and pointing a diagnostic setting at `log-lark`. It can't change or delete the database, the vault, its
+secrets, the identities or the zones. Larkspur Group Reader has one action, `resourceGroups/read`, so teardown can
+prove the Container Apps managed group is gone (INC-004).
+
+**Key decisions**
+
+- **OIDC instead of a client secret.** GitHub issues a short-lived token for each job and Microsoft Entra ID trusts it
+  by its subject. There's no secret to store, rotate or leak. The four values I keep as GitHub secrets (tenant,
+  subscription and two client IDs) are identifiers, not passwords; I store them as secrets to keep them out of logs.
+- **Trust is scoped by subject.** My repository was created after GitHub switched to immutable OIDC subjects, so the
+  subject includes the owner and repository IDs (`repo:ChefBoyRJeff@<ownerId>/larkspur-azure-platform@<repoId>:...`).
+  A renamed or recreated repository with the same name can't reuse the trust. `gh-lark-plan` trusts pull requests
+  only; `gh-lark-deploy` trusts the `production` environment only, which needs my approval and allows only `main`.
+- **Two identities, and I prove the read-only one is read-only.** A role that's "supposed to" be read-only isn't a
+  control until it's tested. The guardrail job tries a real deployment as `gh-lark-plan` on every pull request and
+  fails the PR if it isn't refused with `deployments/write`.
+- **Deploys are started manually, not on every push.** The app stack is torn down after every session for cost, so a
+  push to `main` has nothing running to update. A session starts with `deploy` and ends with `teardown`, both behind
+  my approval.
+- **The pipeline deploys only the app stack.** Governance and the data tier hold policies, locks, role assignments and
+  data. They stay deployed by me, and the deploy identity gets only what the app stack needs in `rg-lark-data`.
+- **The image is pinned to a commit SHA and checked before Azure is touched.** By default the workflow deploys the
+  last commit that changed `app/`, because infrastructure-only commits don't produce a new image. It confirms that
+  tag exists in GHCR first, so a typo can't half-deploy the stack.
+- **Logs through an Azure Monitor diagnostic setting.** The M4a setup put the workspace key in the template through
+  `listKeys()`, so the key went through the deployment and even what-if had to read it. With a diagnostic setting the
+  key never appears in the template or the deployment history. The deploy identity still needs
+  `workspaces/sharedKeys/action` on `log-lark`, because Azure checks the destination too (INC-003).
+- **Idempotency is a gate, not a report.** After every deploy, what-if must show no real change. The filter's rules are
+  documented below; when the check found real drift on the new diagnostic setting, I fixed the template instead of
+  adding a rule.
+- **One targeted retry.** `deploy` retries once, only for Azure's "pending delete operation" conflict (INC-003). Every
+  other failure stops the run with the full error message.
+
+**What-if noise the idempotency filter removes** (each one investigated earlier)
+
+| Rule | Why it's noise |
+|---|---|
+| DNS zone groups: `etag`, `id`, `provisioningState`, `type` inside `privateDnsZoneConfigs` | Read-only properties Azure returns (M3) |
+| `properties.runningStatus` on the app | Read-only status (M4b) |
+| `properties.configuration.ingress.exposedPort` | TCP-only setting Azure stores as 0 for HTTP apps (M4b) |
+| Values shown as `[reference(...)]` | What-if can't resolve references into another resource group; the smoke tests prove the deployed values (M4a/M4b) |
+
+**Verification** (11-13-2026)
+
+| Check | Result |
+|---|---|
+| Pipeline identities | ✅ 3 custom roles, 2 app registrations with 1 federated credential each, 0 secrets and 0 certificates, every assignment scoped as designed ([`m5-01`](docs/evidence/m5-01-pipeline-identity.txt), [`m5-08`](docs/evidence/m5-08-group-reader.txt)) |
+| PR #1 `validate` | ✅ lint and build; what-if as `gh-lark-plan`: 14 to create, 9 to ignore; guardrail refused with `deployments/write` ([`m5-02`](docs/evidence/m5-02-validate-pr1.txt)) |
+| Deploy run 1 | ❌ linked-scope permission and a pending delete (INC-003) ([`m5-03`](docs/evidence/m5-03-deploy-run1-failed.txt)) |
+| Deploy run 2 | ✅ deploy, migration and smoke tests; ❌ idempotency: 4 real changes on the new diagnostic setting ([`m5-05`](docs/evidence/m5-05-deploy-run2-drift.txt)) |
+| Deploy run 3 | ✅ every step, **Idempotency: PASS** ([`m5-06`](docs/evidence/m5-06-deploy-run3-pass.txt)) |
+| Smoke tests (run 3) | ✅ `/healthz` 200; `/readyz` 200 with SQL at 10.60.1.4 (private endpoint), 5 shipments, secret present; LRK100001 200; LRK999999 404; bad input 400 |
+| Teardown run 1 | ✅ everything deleted; ❌ the managed-group check was refused but reported "gone" (INC-004) ([`m5-07`](docs/evidence/m5-07-teardown-run1-forbidden.txt)) |
+| Teardown run 2 | ✅ `rg-lark-app` empty, `rg-lark-app-infra` gone, proven by a real answer ([`m5-09`](docs/evidence/m5-09-teardown-run2-verified.txt)) |
+| Log routing | ✅ rows in the resource-specific `ContainerAppConsoleLogs` table, after Azure's documented activation time of up to 90 minutes for a new diagnostic setting ([`m5-10`](docs/evidence/m5-10-log-routing.txt)) |
+
+**What I'd do differently in production:** branch protection on `main` (required pull request and required
+`validate` checks), a second approver instead of approving my own deploys, and a separate non-production
+environment that deploys automatically on merge.
+
 ## Cost
 
 | Item | Running cost |
@@ -396,10 +494,12 @@ Container Apps show no management-hour charge.
 | Managed identities | $0 |
 | Log Analytics | within the free ingestion allowance; 0.1 GB/day cap |
 | Budget alert | $5/month on both resource groups |
+| GitHub Actions | $0 (public repository, GitHub-hosted runners) |
 
 ## Teardown
 
-At the end of every session I run:
+At the end of every session I run the **teardown** workflow (Actions → teardown → Run workflow, then approve). It
+runs the same script I can run locally:
 
 ```powershell
 ./scripts/Remove-LarkAppResources.ps1 -WhatIf   # preview
@@ -408,4 +508,5 @@ At the end of every session I run:
 
 It removes the DNS zone links, then everything inside `rg-lark-app` in dependency order (apps and jobs, environment,
 private endpoints, VNet, NSGs, identities), verifies the group is empty, and waits up to 10 minutes to confirm Azure
-has removed `rg-lark-app-infra`. `rg-lark-data` stays: it holds the data and logs and costs about $0 when idle.
+has removed `rg-lark-app-infra`. If it can't check, or the group is still there, it fails instead of reporting
+success (INC-004). `rg-lark-data` stays: it holds the data and logs and costs about $0 when idle.

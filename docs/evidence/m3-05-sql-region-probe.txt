@@ -1,4 +1,4 @@
-=== M3-05: SQL server capability probe, US regions (read-only), 11-12-2026 20:47 EST ===
+=== M3-05: SQL server capability probe, US regions (read-only), 11-12-2026 08:47 PM EST ===
 
 region         status    generalPurpose reason
 ------         ------    -------------- ------

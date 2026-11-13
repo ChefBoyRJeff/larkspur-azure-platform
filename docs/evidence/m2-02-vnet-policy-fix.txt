@@ -1,4 +1,4 @@
-=== M2-02: declare privateEndpointVNetPolicies, redeploy, drift check, 11-12-2026 16:09 EST ===
+=== M2-02: declare privateEndpointVNetPolicies, redeploy, drift check, 11-12-2026 04:09 PM EST ===
 WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
 
 

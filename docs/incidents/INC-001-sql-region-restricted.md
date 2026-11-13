@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Date** | 11-12-2026, 16:20–21:00 EST |
+| **Date** | 11-12-2026, 04:20 PM–09:00 PM EST |
 | **Milestone** | M3 (data and secrets) |
 | **Impact** | Data tier blocked: the SQL server couldn't be created, so its private endpoint failed too. No data or running services affected (nothing was live yet). |
 | **Status** | Resolved: SQL server deployed in Central US; private endpoint connects to it from vnet-lark in East US |

@@ -1,4 +1,4 @@
-=== M3-04: lock placement fix (INC-002), data tier, private endpoints, 11-12-2026 16:41 EST ===
+=== M3-04: lock placement fix (INC-002), data tier, private endpoints, 11-12-2026 04:41 PM EST ===
 --- locks before ---
 Lock                        Level
 --------------------------  ------------
@@ -6,7 +6,7 @@ lock-kv-lark-iqlx77ptc36ws  CanNotDelete
 
 --- delete Key Vault lock (exit 0) ---
 
-=== Teardown: rg-lark-app (links in rg-lark-data), 11-12-2026 16:41 EST ===
+=== Teardown: rg-lark-app (links in rg-lark-data), 11-12-2026 04:41 PM EST ===
 no link        privatelink.database.windows.net/link-vnet-lark
 no link        privatelink.vaultcore.azure.net/link-vnet-lark
 deleted        Microsoft.Network/privateEndpoints/pe-lark-kv
@@ -94,4 +94,4 @@ Resource changes: 3 to create, 3 no change.
 WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
 ERROR: {"status":"Failed","error":{"code":"DeploymentFailed","target":"/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Resources/deployments/lark-data","message":"At least one resource deployment operation failed. Please list deployment operations for details. Please see https://aka.ms/arm-deployment-operations for usage details. Correlation ID: <guid>","details":[{"code":"ResourceDeploymentFailure","target":"/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Resources/deployments/lark-sql","message":"The resource write operation failed to complete successfully, because it reached terminal provisioning state 'Failed'.","details":[{"code":"DeploymentFailed","target":"/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Resources/deployments/lark-sql","message":"At least one resource deployment operation failed. Please list deployment operations for details. Please see https://aka.ms/arm-deployment-operations for usage details. Correlation ID: <guid>","details":[{"code":"ResourceDeploymentFailure","target":"/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-4rhukbxutd5ss","message":"The resource write operation failed to complete successfully, because it reached terminal provisioning state 'Failed'.","details":[{"code":"RegionDoesNotAllowProvisioning","message":"Location 'East US 2' is not accepting creation of new Windows Azure SQL Database servers at this time."}]}]}]}]}}
 
-BLOCK STOPPED 11-12-2026 16:44 EST: deploy data failed - see evidence file
+BLOCK STOPPED 11-12-2026 04:44 PM EST: deploy data failed - see evidence file
