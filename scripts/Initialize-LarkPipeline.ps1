@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
   Creates the Azure and Microsoft Entra ID setup for the larkspur-azure-platform GitHub Actions workflows:
-  two custom roles, two app registrations with GitHub OIDC federated credentials (no secrets), and
-  resource-group-scoped role assignments.
+  three custom roles, two app registrations with GitHub OIDC federated credentials (no secrets), and
+  role assignments scoped to resource groups (plus one metadata-only read on the subscription, INC-004).
 
 .DESCRIPTION
   Adapted from my azure-bicep-cicd-pipeline project. Idempotent: every step checks what exists and only creates
@@ -14,7 +14,9 @@
     gh-lark-plan    pull requests: read + what-if + validate (custom role "Larkspur What-If Reader")
                     on rg-lark-app and rg-lark-data. Cannot deploy anything.
     gh-lark-deploy  the "production" GitHub environment (required reviewer): Contributor on rg-lark-app, and
-                    "Larkspur Data-Tier Integrator" on rg-lark-data (DNS links, endpoint approval, identity assign).
+                    "Larkspur Data-Tier Integrator" on rg-lark-data (DNS links, endpoint approval, identity assign),
+                    and "Larkspur Group Reader" on the subscription: resource group metadata only, so teardown can
+                    prove the Container Apps managed group is gone (INC-004). The only subscription-scope assignment.
 
   The pipeline deploys ONLY the app stack (rg-lark-app). Governance and the data tier hold policies, locks, role
   assignments and data, and stay admin-deployed.
@@ -62,7 +64,9 @@ function Get-SpObjectId([string]$AppId) { Invoke-Az ad sp list --filter "appId e
 
 $eastern = [TimeZoneInfo]::ConvertTimeBySystemTimeZoneId((Get-Date), 'Eastern Standard Time')
 $SubscriptionId = Invoke-Az account show --query id -o tsv
-function Get-RgScope([string]$Name) { "/subscriptions/$SubscriptionId/resourceGroups/$Name" }
+function Get-RgScope([string]$Name) {   # 'subscription' means the subscription itself
+  if ($Name -eq 'subscription') { "/subscriptions/$SubscriptionId" } else { "/subscriptions/$SubscriptionId/resourceGroups/$Name" }
+}
 
 # --- Design (single source of truth) ----------------------------------------------------------
 $RepoId = (Invoke-RestMethod "https://api.github.com/repos/$Repo").id   # public repo metadata
@@ -72,6 +76,7 @@ $SubjectPrefix = "repo:${Owner}@${OwnerId}/${RepoName}@${RepoId}"
 $Roles = @(
   @{ Name = 'Larkspur What-If Reader';       File = 'larkspur-whatif-reader.role.json';       CheckScope = 'rg-lark-app' }
   @{ Name = 'Larkspur Data-Tier Integrator'; File = 'larkspur-data-tier-integrator.role.json'; CheckScope = 'rg-lark-data' }
+  @{ Name = 'Larkspur Group Reader';         File = 'larkspur-group-reader.role.json';         CheckScope = 'subscription' }
 )
 
 $Identities = @(
@@ -84,9 +89,10 @@ $Assignments = @(
   @{ Identity = 'gh-lark-plan';   Role = 'Larkspur What-If Reader';       ResourceGroup = 'rg-lark-data' }
   @{ Identity = 'gh-lark-deploy'; Role = 'Contributor';                   ResourceGroup = 'rg-lark-app' }
   @{ Identity = 'gh-lark-deploy'; Role = 'Larkspur Data-Tier Integrator'; ResourceGroup = 'rg-lark-data' }
+  @{ Identity = 'gh-lark-deploy'; Role = 'Larkspur Group Reader';         ResourceGroup = 'subscription' }
 )
 
-"=== Initialize-LarkPipeline, $($eastern.ToString('MM-dd-yyyy HH:mm')) EST, repo $Repo ===" | Set-Content $OutFile
+"=== Initialize-LarkPipeline, $($eastern.ToString('MM-dd-yyyy hh:mm tt')) EST, repo $Repo ===" | Set-Content $OutFile
 
 # --- 1. Custom roles --------------------------------------------------------------------------
 Log '--- 1. Custom roles ---'
@@ -152,7 +158,7 @@ foreach ($id in $Identities) {
   Log "  created  $($id.Name) <- $($id.Subject)"
 }
 
-# --- 4. Role assignments (resource-group scope only) --------------------------------------------
+# --- 4. Role assignments (resource groups, plus the Group Reader on the subscription) ----------------
 Log '--- 4. Role assignments ---'
 foreach ($a in $Assignments) {
   $spId = Get-SpObjectId (Get-AppId $a.Identity)
@@ -183,7 +189,9 @@ foreach ($id in $Identities) {
   }
   $spId = Get-SpObjectId $appId
   foreach ($ra in (Invoke-Az role assignment list --assignee $spId --all -o json) -join "`n" | ConvertFrom-Json) {
-    $where = if ($ra.scope -match '/resourceGroups/([^/]+)$') { "resource group $($Matches[1])" } else { 'UNEXPECTED SCOPE' }
+    $where = if ($ra.scope -match '/resourceGroups/([^/]+)$') { "resource group $($Matches[1])" }
+             elseif ($ra.scope -eq "/subscriptions/$SubscriptionId" -and $ra.roleDefinitionId -like "*/$($RoleIds['Larkspur Group Reader'])") { 'subscription (group metadata only)' }
+             else { 'UNEXPECTED SCOPE' }
     $roleName = ($RoleIds.GetEnumerator() | Where-Object { $ra.roleDefinitionId -like "*/$($_.Value)" } | Select-Object -First 1).Key
     if (-not $roleName) { $roleName = $ra.roleDefinitionName }
     Log ("  {0,-15} {1,-30} @ {2}" -f $id.Name, $roleName, $where)

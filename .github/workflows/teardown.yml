@@ -36,7 +36,11 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/Remove-LarkAppResources.ps1 *>&1 | Tee-Object -FilePath teardown.txt
+          # Independent re-check. A failed check is a failure, never a pass (INC-004).
           $left = az resource list --resource-group rg-lark-app --query "length([])" -o tsv
+          if ($LASTEXITCODE -ne 0) { throw "Can't list rg-lark-app (az exit $LASTEXITCODE)" }
           $infra = az group exists --name rg-lark-app-infra
+          if ($LASTEXITCODE -ne 0) { throw "Can't check rg-lark-app-infra (az exit $LASTEXITCODE); see INC-004" }
           "**Teardown:** rg-lark-app resources left: $left; rg-lark-app-infra exists: $infra" | Out-File -Append $env:GITHUB_STEP_SUMMARY
-          if ($left -ne '0') { Write-Error "rg-lark-app still has $left resource(s)" }
+          if ($left -ne '0') { throw "rg-lark-app still has $left resource(s)" }
+          if ($infra -ne 'false') { throw "rg-lark-app-infra still exists (it keeps billing)" }

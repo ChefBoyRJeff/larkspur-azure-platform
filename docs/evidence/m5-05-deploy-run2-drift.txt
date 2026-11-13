@@ -1,0 +1,21 @@
+=== M5 deploy run 2 (workflow run 43452923476), started 11-13-2026 10:28 AM EST, after INC-003 fixes ===
+Steps: deploy = Succeeded on the first attempt (no pending-delete retry needed); migrate, smoke tests = passed; idempotency = FAILED (4 real changes)
+What-if before deploy: Resource changes: 2 to create, 3 to modify, 9 no change, 11 to ignore.
+    + Microsoft.App/containerApps/ca-lark-tracking-api [2024-03-01]
+    + Microsoft.App/managedEnvironments/cae-lark/providers/Microsoft.Insights/diagnosticSettings/diag-to-log-lark [2021-05-01-preview]
+    ~ Microsoft.App/jobs/job-lark-migrate [2024-03-01]
+    ~ Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default [2024-05-01]
+    ~ Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default [2024-05-01]
+migration job-lark-migrate-dtj9pel: Succeeded
+Smoke tests from the internet:
+  GET /healthz -> 200 (expect 200): {"status":"ok"}
+  GET /readyz -> 200 (expect 200): {"ready":true,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.4"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}}}
+  GET /shipments/LRK100001 -> 200 (expect 200): {"trackingNumber":"LRK100001","origin":"Larkspur HQ","destination":"North Depot","status":"Delivered","lastUpdatedUtc":"2026-11-13T13:51:11Z"}
+  GET /shipments/LRK999999 -> 404 (expect 404): {"detail":"Shipment not found."}
+  GET /shipments/not-a-number -> 400 (expect 400): {"detail":"Tracking numbers look like LRK123456."}
+Idempotency (what-if after deploy, known noise filtered):
+  drift  diag-to-log-lark: 1 (Delete)
+  drift  diag-to-log-lark: retentionPolicy.days (Delete)
+  drift  diag-to-log-lark: properties.metrics (Delete)
+  drift  diag-to-log-lark: properties.logAnalyticsDestinationType (Create)
+Result: idempotency gate failed on diag-to-log-lark (Azure-filled audit group, AllMetrics, retention; destination type stored as null). Fixed in PR #3.

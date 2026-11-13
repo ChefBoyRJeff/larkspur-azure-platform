@@ -62,7 +62,7 @@ $deleteOrder = @(
 
 # Timestamps are Eastern time, MM-DD-YYYY HH:MM (project convention).
 $eastern = [TimeZoneInfo]::ConvertTimeBySystemTimeZoneId((Get-Date), 'Eastern Standard Time')
-Write-Host "=== Teardown: $AppResourceGroup (links in $DnsResourceGroup), $($eastern.ToString('MM-dd-yyyy HH:mm')) EST ==="
+Write-Host "=== Teardown: $AppResourceGroup (links in $DnsResourceGroup), $($eastern.ToString('MM-dd-yyyy hh:mm tt')) EST ==="
 
 # 1. DNS zone links that belong to this stack.
 $zones = Invoke-Az @('network', 'private-dns', 'zone', 'list', '--resource-group', $DnsResourceGroup, '--query', '[].name', '-o', 'tsv')
@@ -101,12 +101,19 @@ if (-not $WhatIfPreference) {
         $left | ForEach-Object { Write-Warning "  $($_.type)/$($_.name)" }
     }
     # 4. The Container Apps managed group is deleted by Azure with the environment, sometimes a few minutes later.
+    #    "Gone" must be proven: if the check itself fails (for example Forbidden), that's an error, never "gone"
+    #    (INC-004: az group exists prints nothing when it's refused, and the old check read that as "gone").
+    function Test-GroupExists([string]$Name) {
+        $out = & az group exists --name $Name 2>$null
+        if ($LASTEXITCODE -ne 0 -or ($out -ne 'true' -and $out -ne 'false')) {
+            throw "Can't check whether $Name exists (az exit $LASTEXITCODE). The caller needs Microsoft.Resources/subscriptions/resourceGroups/read on the subscription (INC-004)."
+        }
+        return ($out -eq 'true')
+    }
     $deadline = (Get-Date).AddMinutes(10)
-    while (((& az group exists --name $InfraResourceGroup) -eq 'true') -and ((Get-Date) -lt $deadline)) { Start-Sleep -Seconds 30 }
-    if ((& az group exists --name $InfraResourceGroup) -eq 'true') {
-        Write-Warning "$InfraResourceGroup still exists after 10 minutes (load balancer + public IPs keep billing); check it in the portal"
+    while ((Test-GroupExists $InfraResourceGroup) -and ((Get-Date) -lt $deadline)) { Start-Sleep -Seconds 30 }
+    if (Test-GroupExists $InfraResourceGroup) {
+        throw "$InfraResourceGroup still exists after 10 minutes (its load balancer and public IPs keep billing); check it in the portal"
     }
-    else {
-        Write-Host "verified       $InfraResourceGroup is gone"
-    }
+    Write-Host "verified       $InfraResourceGroup is gone"
 }

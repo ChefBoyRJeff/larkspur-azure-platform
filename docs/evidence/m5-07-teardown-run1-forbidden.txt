@@ -1,0 +1,26 @@
+=== M5 teardown run 1 (workflow run 43458012278), started 11-13-2026 10:58 AM EST as gh-lark-deploy, approved in the production environment ===
+Result: FAILED (exit code 1) after removing everything; the rg-lark-app-infra check was refused (INC-004)
+
+--- Remove-LarkAppResources.ps1 output (times converted from the runner's UTC log to EST) ---
+11:00 AM  deleted link   privatelink.database.windows.net/link-vnet-lark
+11:00 AM  deleted link   privatelink.vaultcore.azure.net/link-vnet-lark
+11:00 AM  deleted        Microsoft.App/containerApps/ca-lark-tracking-api
+11:01 AM  deleted        Microsoft.App/jobs/job-lark-migrate
+11:01 AM  deleted        Microsoft.App/jobs/job-lark-dnscheck
+11:26 AM  deleted        Microsoft.App/managedEnvironments/cae-lark
+11:27 AM  deleted        Microsoft.Network/privateEndpoints/pe-lark-sql
+11:28 AM  deleted        Microsoft.Network/privateEndpoints/pe-lark-kv
+11:28 AM  deleted        Microsoft.Network/virtualNetworks/vnet-lark
+11:28 AM  deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-pe
+11:28 AM  deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-aca
+11:28 AM  verified       rg-lark-app is empty
+11:28 AM  ERROR: Operation returned an invalid status 'Forbidden'
+11:28 AM  ERROR: Operation returned an invalid status 'Forbidden'
+11:28 AM  verified       rg-lark-app-infra is gone
+11:28 AM  ERROR: Operation returned an invalid status 'Forbidden'
+
+--- Check as admin afterwards (11-13-2026 11:30 AM EST) ---
+rg-lark-app resources: 0; rg-lark-app-infra exists: false; VNet links left in rg-lark-data: 0
+
+Finding: 'verified rg-lark-app-infra is gone' was printed after the check was refused (Forbidden), so it proved
+nothing. The admin check confirmed the group really was gone. Root cause and fix: INC-004.
