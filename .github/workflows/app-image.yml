@@ -1,0 +1,76 @@
+name: app-image
+
+# Tests the shipment-tracking API and publishes its container image to GitHub Container Registry (GHCR).
+# Pull requests: test + build only (nothing published). Pushes to main: test, build and push.
+# No Azure credentials are involved: the image is pulled by Container Apps from a public GHCR package.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-image.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-image.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: app-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/chefboyrjeff/larkspur-tracking-api
+
+jobs:
+  test-build-push:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies
+        run: pip install fastapi==0.115.6 azure-identity==1.19.0 -r app/requirements-dev.txt
+
+      - name: Unit tests
+        run: python -m pytest app/tests -q
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (and push on main)
+        uses: docker/build-push-action@v6
+        with:
+          context: app
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.IMAGE }}:main
+            ${{ env.IMAGE }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.description=Larkspur Logistics shipment-tracking API (fictional company, portfolio project)
+
+      - name: Summary
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "Published ${IMAGE}:${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Published ${IMAGE}:main" >> "$GITHUB_STEP_SUMMARY"
