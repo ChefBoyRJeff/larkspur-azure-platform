@@ -1,0 +1,14 @@
+{
+  "Name": "Larkspur Group Reader",
+  "IsCustom": true,
+  "Description": "Lets the Larkspur deploy pipeline check whether a resource group exists, so teardown can prove the Container Apps managed group rg-lark-app-infra is gone. Resource group metadata only (name, location, tags): no access to anything inside any group.",
+  "Actions": [
+    "Microsoft.Resources/subscriptions/resourceGroups/read"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/{subscriptionId}"
+  ]
+}

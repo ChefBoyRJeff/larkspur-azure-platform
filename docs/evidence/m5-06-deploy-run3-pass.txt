@@ -1,0 +1,18 @@
+=== M5 deploy run 3 (workflow run 43456615120), started 11-13-2026 10:50 AM EST, after PR #3 (diagnostic setting declared as Azure stores it) ===
+Steps: every step succeeded (image verified, OIDC login as gh-lark-deploy, what-if + deploy, migrate, smoke tests, idempotency)
+What-if before deploy: Resource changes: 4 to modify, 10 no change, 11 to ignore.
+    ~ Microsoft.App/containerApps/ca-lark-tracking-api [2024-03-01]
+    ~ Microsoft.App/jobs/job-lark-migrate [2024-03-01]
+    ~ Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default [2024-05-01]
+    ~ Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default [2024-05-01]
+migration job-lark-migrate-1ccrq5c: Succeeded
+Smoke tests from the internet:
+  GET /healthz -> 200 (expect 200): {"status":"ok"}
+  GET /readyz -> 200 (expect 200): {"ready":true,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.4"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}}}
+  GET /shipments/LRK100001 -> 200 (expect 200): {"trackingNumber":"LRK100001","origin":"Larkspur HQ","destination":"North Depot","status":"Delivered","lastUpdatedUtc":"2026-11-13T13:51:11Z"}
+  GET /shipments/LRK999999 -> 404 (expect 404): {"detail":"Shipment not found."}
+  GET /shipments/not-a-number -> 400 (expect 400): {"detail":"Tracking numbers look like LRK123456."}
+Idempotency (what-if after deploy, known noise filtered):
+  (no drift lines)
+Idempotency: PASS. No drift after filtering documented what-if noise.
+Note: the 4 'Modify' lines before deploy are documented noise only (checked line by line): exposedPort and runningStatus on the app, [reference()] values on the app and job, and read-only DNS zone group properties.
