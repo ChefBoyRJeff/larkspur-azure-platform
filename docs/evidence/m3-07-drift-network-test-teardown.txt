@@ -1,0 +1,145 @@
+=== M3-07: drift fixes, public-network test with a real Entra token, teardown, 11-12-2026 21:18 EST ===
+--- lint data (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+--- deploy data (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded"
+}
+
+--- lint app (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+WARNING: D:\Development\larkspur-azure-platform\infra\app\modules\private-endpoints.bicep(63,7) : Warning BCP037: The property "isIPv6EnabledPrivateEndpoint" is not allowed on objects of type "PrivateEndpointProperties". Permissible properties include "applicationSecurityGroups", "customDnsConfigs", "ipConfigurations", "manualPrivateLinkServiceConnections". If this is a resource type definition inaccuracy, report it using https://aka.ms/bicep-type-issues. [https://aka.ms/bicep/core-diagnostics#BCP037]
+
+
+
+
+--- deploy app (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+WARNING: D:\Development\larkspur-azure-platform\infra\app\modules\private-endpoints.bicep(63,7) : Warning BCP037: The property "isIPv6EnabledPrivateEndpoint" is not allowed on objects of type "PrivateEndpointProperties". Permissible properties include "applicationSecurityGroups", "customDnsConfigs", "ipConfigurations", "manualPrivateLinkServiceConnections". If this is a resource type definition inaccuracy, report it using https://aka.ms/bicep-type-issues. [https://aka.ms/bicep/core-diagnostics#BCP037]
+
+
+{
+  "state": "Succeeded"
+}
+
+--- what-if data (expect NoChange) (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  = Nochange
+  * Ignore
+  x Noeffect
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  = Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws [2023-07-01]
+  = Microsoft.Network/privateDnsZones/privatelink.database.windows.net [2020-06-01]
+  = Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net [2020-06-01]
+  = Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc [2023-08-01]
+  = Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking [2023-08-01]
+    x sku.capacity: 2
+    x sku.tier:     "GeneralPurpose"
+
+  = Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking/providers/Microsoft.Authorization/locks/lock-sqldb-lark-tracking [2020-05-01]
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/master
+
+Resource changes: 6 no change, 3 to ignore.
+
+--- what-if app (expect only the known DNS zone group noise) (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+WARNING: D:\Development\larkspur-azure-platform\infra\app\modules\private-endpoints.bicep(63,7) : Warning BCP037: The property "isIPv6EnabledPrivateEndpoint" is not allowed on objects of type "PrivateEndpointProperties". Permissible properties include "applicationSecurityGroups", "customDnsConfigs", "ipConfigurations", "manualPrivateLinkServiceConnections". If this is a resource type definition inaccuracy, report it using https://aka.ms/bicep-type-issues. [https://aka.ms/bicep/core-diagnostics#BCP037]
+
+
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  - Delete
+  ~ Modify
+  = Nochange
+  * Ignore
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default [2024-05-01]
+    ~ properties.privateDnsZoneConfigs: [
+      ~ 0:
+
+        - etag:                         "W/"<guid>""
+        - id:                           "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default/privateDnsZoneConfigs/privatelink-vaultcore-azure-net"
+        - properties.provisioningState: "Succeeded"
+        - type:                         "Microsoft.Network/privateEndpoints/privateDnsZoneGroups/privateDnsZoneConfigs"
+
+      ]
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default [2024-05-01]
+    ~ properties.privateDnsZoneConfigs: [
+      ~ 0:
+
+        - etag:                         "W/"<guid>""
+        - id:                           "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default/privateDnsZoneConfigs/privatelink-database-windows-net"
+        - properties.provisioningState: "Succeeded"
+        - type:                         "Microsoft.Network/privateEndpoints/privateDnsZoneGroups/privateDnsZoneConfigs"
+
+      ]
+
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-aca [2024-05-01]
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-pe [2024-05-01]
+  = Microsoft.Network/privateEndpoints/pe-lark-kv [2024-05-01]
+  = Microsoft.Network/privateEndpoints/pe-lark-sql [2024-05-01]
+  = Microsoft.Network/virtualNetworks/vnet-lark [2024-05-01]
+  * Microsoft.Network/networkInterfaces/nic-pe-lark-kv
+  * Microsoft.Network/networkInterfaces/nic-pe-lark-sql
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  = Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  = Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  * Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/master
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking
+
+Resource changes: 2 to modify, 7 no change, 8 to ignore.
+
+--- SQL from this PC with a valid Entra token (expect: Deny Public Network Access is set to Yes) ---
+refused: Reason: An instance-specific error occurred while establishing a connection to SQL Server. Connection was denied because Deny Public Network Access is set to Yes. For more information, see https://go.microsoft.com/fwlink/?linkid=2323206.
+SQL error number: 47073
+=== Teardown: rg-lark-app (links in rg-lark-data), 11-12-2026 21:21 EST ===
+deleted link   privatelink.database.windows.net/link-vnet-lark
+deleted link   privatelink.vaultcore.azure.net/link-vnet-lark
+deleted        Microsoft.Network/privateEndpoints/pe-lark-kv
+deleted        Microsoft.Network/privateEndpoints/pe-lark-sql
+deleted        Microsoft.Network/virtualNetworks/vnet-lark
+deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-pe
+deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-aca
+verified       rg-lark-app is empty
+
+A records left in privatelink.database.windows.net: 0 (expect 0: the zone groups remove them with the endpoints)
+A records left in privatelink.vaultcore.azure.net: 0 (expect 0: the zone groups remove them with the endpoints)
+--- data tier after teardown (persistent) (exit 0) ---
+Name                                        Location
+------------------------------------------  ----------
+privatelink.database.windows.net            global
+privatelink.vaultcore.azure.net             global
+kv-lark-iqlx77ptc36ws                       eastus
+sql-lark-jkw4epybg3jwc                      centralus
+sql-lark-jkw4epybg3jwc/master               centralus
+sql-lark-jkw4epybg3jwc/sqldb-lark-tracking  centralus
+
+BLOCK COMPLETED 11-12-2026 21:24 EST

@@ -1,4 +1,4 @@
-=== M1-03: fix definitionVersion what-if noise, redeploy, drift check, 2026-11-12 ===
+=== M1-03: fix definitionVersion what-if noise, redeploy, drift check, 11-12-2026 ===
 --- lint ---
 WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
 

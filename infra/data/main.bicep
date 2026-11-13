@@ -11,7 +11,7 @@ import { larkSqlServerName, larkKeyVaultName } from '../shared/naming.bicep'
 @description('Region for regional data resources (Key Vault)')
 param location string
 
-@description('Region for the SQL server and database. Separate from location because East US stopped accepting new SQL servers for this subscription (INC-001); the private endpoint stays in vnet-lark (East US), which Private Link supports across regions.')
+@description('Region for the SQL server and database. Separate from location because new SQL servers are provisioning-restricted for this subscription in East US (INC-001); the private endpoint stays in vnet-lark (East US), which Private Link supports across regions.')
 param sqlLocation string
 
 @description('Standard Larkspur tags. costCenter is required by policy on every resource.')

@@ -1,0 +1,271 @@
+=== M3-06: SQL in Central US, data tier, private endpoints, 11-12-2026 20:49 EST ===
+--- deploy governance (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded"
+}
+
+--- allowed locations: rg-lark-data (exit 0) ---
+[
+  [
+    "eastus",
+    "centralus"
+  ]
+]
+
+--- lint data (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+--- deploy data (SQL server takes a few minutes) (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded"
+}
+
+outputs: sql=sql-lark-jkw4epybg3jwc fqdn=sql-lark-jkw4epybg3jwc.database.windows.net db=sqldb-lark-tracking kv=kv-lark-iqlx77ptc36ws
+--- state: SQL server (exit 0) ---
+{
+  "adminLogin": "lark-sql-admins",
+  "adminType": "Group",
+  "entraOnly": true,
+  "location": "centralus",
+  "minimalTls": "1.2",
+  "publicNetworkAccess": "Disabled"
+}
+
+--- state: database (exit 0) ---
+{
+  "atFreeLimit": "AutoPause",
+  "backupRedundancy": "Local",
+  "capacity": 2,
+  "maxSizeBytes": 34359738368,
+  "sku": "GP_S_Gen5",
+  "status": "Online",
+  "useFreeLimit": true
+}
+
+--- state: Key Vault (exit 0) ---
+{
+  "aclBypass": "None",
+  "aclDefault": "Deny",
+  "location": "eastus",
+  "publicNetworkAccess": "Disabled",
+  "purgeProtection": true,
+  "rbac": true,
+  "softDeleteDays": 7
+}
+
+--- state: locks (exit 0) ---
+Lock                      Level
+------------------------  ------------
+lock-sqldb-lark-tracking  CanNotDelete
+
+--- lint app (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+--- deploy app (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded"
+}
+
+--- private endpoints (exit 0) ---
+Endpoint     Location    Connection    GroupId    CostCenter
+-----------  ----------  ------------  ---------  ------------
+pe-lark-kv   eastus      Approved      vault      CC-LARK-01
+pe-lark-sql  eastus      Approved      sqlServer  CC-LARK-01
+
+--- private endpoint NICs (exit 0) ---
+Nic              PrivateIp    CostCenter
+---------------  -----------  ------------
+nic-pe-lark-kv   10.60.1.4    CC-LARK-01
+nic-pe-lark-sql  10.60.1.5    CC-LARK-01
+
+--- A records in privatelink.database.windows.net (exit 0) ---
+Record                  Ip
+----------------------  ---------
+sql-lark-jkw4epybg3jwc  10.60.1.5
+
+--- A records in privatelink.vaultcore.azure.net (exit 0) ---
+Record                 Ip
+---------------------  ---------
+kv-lark-iqlx77ptc36ws  10.60.1.4
+
+--- public DNS for the SQL name (resolves, by design) ---
+
+Name                                                     Type NameHost                                                IPAddress
+----                                                     ---- --------                                                ---------
+sql-lark-jkw4epybg3jwc.database.windows.net             CNAME sql-lark-jkw4epybg3jwc.privatelink.database.windows.net 
+sql-lark-jkw4epybg3jwc.privatelink.database.windows.net CNAME dataslice11.centralus.database.windows.net              
+dataslice11.centralus.database.windows.net              CNAME dataslice11centralus.trafficmanager.net                 
+dataslice11centralus.trafficmanager.net                 CNAME cr15.centralus1-a.control.database.windows.net          
+cr15.centralus1-a.control.database.windows.net              A                                                         <public-ip>
+
+
+--- SQL connection from this PC (expect refusal) ---
+refused: Login failed for user 'public-access-probe'. Reason: Azure Active Directory only authentication is enabled. Please contact your system administrator.
+--- Key Vault data plane from this PC (expect ForbiddenByConnection) ---
+ERROR: (Forbidden) Connection is not an approved private link and caller was ignored because bypass is not set to 'AzureServices' and PublicNetworkAccess is set to 'Disabled'. 
+
+Vault: kv-lark-iqlx77ptc36ws;location=eastus
+Code: Forbidden
+Message: Connection is not an approved private link and caller was ignored because bypass is not set to 'AzureServices' and PublicNetworkAccess is set to 'Disabled'. 
+
+Vault: kv-lark-iqlx77ptc36ws;location=eastus
+Inner error: {
+    "code": "ForbiddenByConnection"
+}
+
+--- policy: try to re-enable SQL public access (expect RequestDisallowedByPolicy) ---
+WARNING: Argument '--enable-public-network' is in preview and under development. Reference and support levels: https://aka.ms/CLI_refstatus
+ERROR: (RequestDisallowedByPolicy) Resource 'sql-lark-jkw4epybg3jwc' was disallowed by policy. Reasons: 'Larkspur SQL servers are reachable only through private endpoints. Set publicNetworkAccess to Disabled.'. See error details for policy resource IDs.
+Code: RequestDisallowedByPolicy
+Message: Resource 'sql-lark-jkw4epybg3jwc' was disallowed by policy. Reasons: 'Larkspur SQL servers are reachable only through private endpoints. Set publicNetworkAccess to Disabled.'. See error details for policy resource IDs.
+Target: sql-lark-jkw4epybg3jwc
+Additional Information:Type: PolicyViolation
+Info: {
+    "evaluationDetails": {
+        "evaluatedExpressions": [
+            {
+                "result": "True",
+                "expressionKind": "Field",
+                "expression": "type",
+                "path": "type",
+                "expressionValue": "Microsoft.Sql/servers",
+                "targetValue": "Microsoft.Sql/servers",
+                "operator": "Equals"
+            },
+            {
+                "result": "True",
+                "expressionKind": "Field",
+                "expression": "Microsoft.Sql/servers/publicNetworkAccess",
+                "path": "properties.publicNetworkAccess",
+                "expressionValue": "Enabled",
+                "targetValue": "Disabled",
+                "operator": "NotEquals"
+            }
+        ],
+        "reason": "Larkspur SQL servers are reachable only through private endpoints. Set publicNetworkAccess to Disabled."
+    },
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/<guid>",
+    "policyDefinitionName": "<guid>",
+    "policyDefinitionDisplayName": "Public network access on Azure SQL Database should be disabled",
+    "policyDefinitionVersion": "1.1.0",
+    "policyDefinitionEffect": "Deny",
+    "policyAssignmentId": "/subscriptions/<guid>/resourcegroups/rg-lark-data/providers/Microsoft.Authorization/policyAssignments/lark-deny-sql-public-access",
+    "policyAssignmentName": "lark-deny-sql-public-access",
+    "policyAssignmentDisplayName": "Larkspur: deny Azure SQL public network access (rg-lark-data)",
+    "policyAssignmentScope": "/subscriptions/<guid>/resourcegroups/rg-lark-data",
+    "policyAssignmentParameters": {
+        "effect": "Deny"
+    },
+    "policyExemptionIds": [],
+    "policyEnrollmentIds": []
+}
+
+publicNetworkAccess after attempt: Disabled
+--- lock: try to delete the database (expect ScopeLocked; it is empty, so nothing to lose if the lock failed) ---
+ERROR: (ScopeLocked) The scope '/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking' cannot perform delete operation because following scope(s) are locked: '/subscriptions/<guid>/resourcegroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking'. Please remove the lock and try again.
+Code: ScopeLocked
+Message: The scope '/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking' cannot perform delete operation because following scope(s) are locked: '/subscriptions/<guid>/resourcegroups/rg-lark-data/providers/Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking'. Please remove the lock and try again.
+
+database still present: True
+--- what-if again: data ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  + Create
+  ~ Modify
+  = Nochange
+  * Ignore
+  x Noeffect
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  ~ Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking [2023-08-01]
+    + properties.createMode: "Default"
+    x sku.capacity:          2
+    x sku.tier:              "GeneralPurpose"
+
+  = Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws [2023-07-01]
+  = Microsoft.Network/privateDnsZones/privatelink.database.windows.net [2020-06-01]
+  = Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net [2020-06-01]
+  = Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc [2023-08-01]
+  = Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking/providers/Microsoft.Authorization/locks/lock-sqldb-lark-tracking [2020-05-01]
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/master
+
+Resource changes: 1 to modify, 5 no change, 3 to ignore.
+
+--- what-if again: app ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  - Delete
+  ~ Modify
+  = Nochange
+  * Ignore
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-kv [2024-05-01]
+    - properties.isIPv6EnabledPrivateEndpoint: false
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default [2024-05-01]
+    ~ properties.privateDnsZoneConfigs: [
+      ~ 0:
+
+        - etag:                         "W/"<guid>""
+        - id:                           "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default/privateDnsZoneConfigs/privatelink-vaultcore-azure-net"
+        - properties.provisioningState: "Succeeded"
+        - type:                         "Microsoft.Network/privateEndpoints/privateDnsZoneGroups/privateDnsZoneConfigs"
+
+      ]
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-sql [2024-05-01]
+    - properties.isIPv6EnabledPrivateEndpoint: false
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default [2024-05-01]
+    ~ properties.privateDnsZoneConfigs: [
+      ~ 0:
+
+        - etag:                         "W/"<guid>""
+        - id:                           "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default/privateDnsZoneConfigs/privatelink-database-windows-net"
+        - properties.provisioningState: "Succeeded"
+        - type:                         "Microsoft.Network/privateEndpoints/privateDnsZoneGroups/privateDnsZoneConfigs"
+
+      ]
+
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-aca [2024-05-01]
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-pe [2024-05-01]
+  = Microsoft.Network/virtualNetworks/vnet-lark [2024-05-01]
+  * Microsoft.Network/networkInterfaces/nic-pe-lark-kv
+  * Microsoft.Network/networkInterfaces/nic-pe-lark-sql
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  = Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  = Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  * Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/master
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking
+
+Resource changes: 4 to modify, 5 no change, 8 to ignore.
+
+BLOCK COMPLETED 11-12-2026 20:56 EST

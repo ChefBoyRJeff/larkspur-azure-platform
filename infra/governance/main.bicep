@@ -17,7 +17,7 @@ param location string
 @description('Regions allowed by policy in rg-lark-app (global resources are excluded by the built-in policy)')
 param allowedLocations array
 
-@description('Regions allowed by policy in rg-lark-data. Wider than rg-lark-app because East US stopped accepting new SQL servers for this subscription (M3 incident INC-001), so the SQL server lives in a second region.')
+@description('Regions allowed by policy in rg-lark-data. Wider than rg-lark-app because new SQL servers are provisioning-restricted for this subscription in East US (M3 incident INC-001), so the SQL server lives in Central US.')
 param dataAllowedLocations array
 
 @description('Tags applied to both resource groups. costCenter is also required on every resource by policy.')

@@ -5,7 +5,7 @@
 > It is not Microsoft's enterprise-scale landing zone architecture and it is not a production system serving real
 > customers.
 
-Plan approved: 2026-11-12. Region: `eastus`.
+Plan approved: 11-12-2026. Region: `eastus` (the SQL server is in `centralus`; see INC-001).
 
 ## Scenario
 
@@ -52,7 +52,7 @@ Internet ──HTTPS──▶ Container App "tracking-api" (Consumption profile,
 | rg-lark-app | Group persistent (it carries the M1 policy and RBAC assignments); contents torn down every session and redeployed | VNet, NSGs, private endpoints, Container Apps environment + app, managed identity |
 
 Private DNS zones moved to `rg-lark-data` after M0 pricing: a zone is priced per month ($0.63 in `eastus` on
-2026-11-12) and it isn't confirmed whether a zone that exists for part of a month is prorated. Keeping two
+11-12-2026) and it isn't confirmed whether a zone that exists for part of a month is prorated. Keeping two
 persistent zones caps that at ~$1.26/month instead of risking a charge per session. It also matches real landing
 zones, where DNS zones are shared platform resources and workload VNets link to them. The teardown script deletes
 the VNet links before deleting `rg-lark-app`.
@@ -140,7 +140,7 @@ in Cost Analysis.
 | M2 | rg-lark-app kept; only its contents are torn down | Deleting the group would delete its M1 policy and RBAC assignments, and recreating those needs rights the pipeline shouldn't have |
 | M3 | In-VNet DNS resolution check moved from M3 to M4 | Nothing runs inside the VNet until the Container Apps environment exists; M3 proves the private A records and the public-side refusal instead |
 | M3 | SQL admin is a dedicated `lark-sql-admins` group, not `lark-ops` | Ops manages alerts and workbooks without data access (M1); database administration is a separate, smaller group |
-| M3 | SQL server in East US 2; everything else stays in East US (INC-001) | East US stopped accepting new SQL servers for this subscription. The private endpoint stays in vnet-lark and connects across regions; `rg-lark-data` alone allows `eastus2` |
+| M3 | SQL server in Central US; everything else stays in East US (INC-001) | New SQL servers are provisioning-restricted for this subscription in eastus, eastus2, northcentralus, westus and westus2 (SQL capabilities probe, 11-12-2026); centralus is the closest available region. The private endpoint stays in vnet-lark and connects across regions; only `rg-lark-data` allows `centralus` |
 | M3 | SQL server name includes the region in its hash (INC-001) | Resource Manager kept the failed East US server's name reserved for that region |
 | M3 | Lock moved from SQL server to database; Key Vault lock removed (INC-002) | A lock also covers the private endpoint connection records Azure deletes with each endpoint, so it blocked teardown. The database lock still protects the data; Key Vault relies on soft delete + purge protection |
 

@@ -1,4 +1,4 @@
-=== M0-03: East US retail prices (pay-as-you-go), 2026-11-12 ===
+=== M0-03: East US retail prices (pay-as-you-go), 11-12-2026 ===
 --- Container Apps (consumption + management hour we must avoid) ---
 Azure Container Apps                                    Dedicated Plan Management                            0.1 USD/1 Hour
 Azure Container Apps                                    Environment Management Hour                          0.1 USD/1 Hour

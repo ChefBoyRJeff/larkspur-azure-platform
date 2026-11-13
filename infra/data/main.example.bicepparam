@@ -1,6 +1,6 @@
 using './main.bicep'
 param location = 'eastus'
-param sqlLocation = 'eastus2'
+param sqlLocation = 'centralus'
 param tags = {
   project: 'larkspur-azure-platform'
   company: 'Larkspur Logistics (fictional)'

@@ -47,7 +47,9 @@ resource server 'Microsoft.Sql/servers@2023-08-01' = {
   }
 }
 
-// Settings copied from Microsoft's free-tier ARM sample (sku, maxSizeBytes, backup redundancy, free-limit flags).
+// Settings from Microsoft's free-tier ARM sample (sku, maxSizeBytes, backup redundancy, free-limit flags).
+// The sample's createMode: 'Default' is left out on purpose: it's write-only (Azure never returns it), so declaring
+// it made every what-if report a change, and Default is what Azure uses when it's omitted (M3 drift check).
 resource database 'Microsoft.Sql/servers/databases@2023-08-01' = {
   parent: server
   name: databaseName
@@ -60,7 +62,6 @@ resource database 'Microsoft.Sql/servers/databases@2023-08-01' = {
     capacity: 2
   }
   properties: {
-    createMode: 'Default'
     maxSizeBytes: 34359738368
     requestedBackupStorageRedundancy: 'Local'
     useFreeLimit: true

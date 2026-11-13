@@ -1,4 +1,4 @@
-=== M0-01: resource provider registration, 2026-11-12 ===
+=== M0-01: resource provider registration, 11-12-2026 ===
 register Microsoft.App exit=0
 register Microsoft.Sql exit=0
 register Microsoft.KeyVault exit=0

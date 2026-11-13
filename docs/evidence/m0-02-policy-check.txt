@@ -1,4 +1,4 @@
-=== M0-02: policy assignments, exemptions and custom definitions visible to this subscription, 2026-11-12 ===
+=== M0-02: policy assignments, exemptions and custom definitions visible to this subscription, 11-12-2026 ===
 --- Assignments ---
 Name                   DisplayName                                                       EnforcementMode    Scope
 ---------------------  ----------------------------------------------------------------  -----------------  ---------------------------------------------------

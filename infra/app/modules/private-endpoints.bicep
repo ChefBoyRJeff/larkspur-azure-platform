@@ -59,6 +59,11 @@ resource privateEndpoints 'Microsoft.Network/privateEndpoints@2024-05-01' = [
       }
       // Predictable NIC name instead of an auto-generated one, so the NIC is recognizable in the portal and logs.
       customNetworkInterfaceName: 'nic-${ep.name}'
+      // Declared at the value Azure stores by default; leaving it out made what-if report a change (M3 drift check).
+      // Azure returns this property, but Bicep's type definitions don't include it for any API version (checked
+      // against Microsoft's privateEndpoints change log), so the type warning is suppressed on purpose.
+      #disable-next-line BCP037
+      isIPv6EnabledPrivateEndpoint: false
       privateLinkServiceConnections: [
         {
           name: ep.name

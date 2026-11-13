@@ -1,4 +1,4 @@
-=== M3-02: SQL region incident fix + data tier + private endpoints, 2026-11-12 16:34 ===
+=== M3-02: SQL region incident fix + data tier + private endpoints, 11-12-2026 16:34 EST ===
 --- inventory before fix ---
 Name                                             Location
 -----------------------------------------------  ----------

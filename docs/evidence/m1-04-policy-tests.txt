@@ -1,4 +1,4 @@
-=== M1-04: policy enforcement tests in rg-lark-app (NSG, free), 2026-11-12 15:58 ===
+=== M1-04: policy enforcement tests in rg-lark-app (NSG, free), 11-12-2026 15:58 EST ===
 Prediction (recorded before running): T1 denied, T2 denied, T3 denied; policy assignment name not predicted.
 Expected by design: T1 denied by lark-require-costcenter, T2 denied by lark-allowed-locations, T3 allowed.
 

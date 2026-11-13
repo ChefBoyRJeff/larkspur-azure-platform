@@ -1,7 +1,7 @@
 using './main.bicep'
 param location = 'eastus'
 param allowedLocations = ['eastus']
-param dataAllowedLocations = ['eastus', 'eastus2']
+param dataAllowedLocations = ['eastus', 'centralus']
 param tags = {
   project: 'larkspur-azure-platform'
   company: 'Larkspur Logistics (fictional)'

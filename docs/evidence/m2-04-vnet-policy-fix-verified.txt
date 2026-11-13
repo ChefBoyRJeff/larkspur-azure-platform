@@ -1,4 +1,4 @@
-=== M2-04: verify privateEndpointVNetPolicies fix (rebuild from code, drift check, teardown), 2026-11-12 16:15 ===
+=== M2-04: verify privateEndpointVNetPolicies fix (rebuild from code, drift check, teardown), 11-12-2026 16:15 EST ===
 --- file check: fix present in network.bicep ---
 line 166: privateEndpointVNetPolicies: 'Disabled'
 size=6655 bytes
