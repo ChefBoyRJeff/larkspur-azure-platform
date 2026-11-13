@@ -1,7 +1,7 @@
 // larkspur-azure-platform: application stack in rg-lark-app.
 // The resource group itself is persistent (it carries the M1 policy and RBAC assignments); everything inside it is
 // torn down at the end of every session by scripts/Remove-LarkAppResources.ps1 and redeployed from this template.
-// M2: network and private DNS links. M3: private endpoints to SQL and Key Vault. M4 adds Container Apps.
+// M2: network and private DNS links. M3: private endpoints to SQL and Key Vault. M4a: Container Apps environment.
 targetScope = 'resourceGroup'
 
 import { larkSqlServerName, larkKeyVaultName } from '../shared/naming.bicep'
@@ -26,6 +26,12 @@ param dataResourceGroupName string
 
 @description('Region of the SQL server (must match infra/data). The private endpoint stays in this stack\'s region.')
 param sqlLocation string
+
+@description('Log Analytics workspace in the data resource group (created by infra/data)')
+param logAnalyticsWorkspaceName string
+
+@description('Name for the platform-managed resource group the Container Apps environment creates (load balancer, public IPs)')
+param containerAppsInfraResourceGroupName string
 
 // Must match the zone names created by infra/data/main.bicep.
 var dnsZoneNames = [
@@ -65,9 +71,31 @@ module privateEndpoints 'modules/private-endpoints.bicep' = {
     tags: tags
     subnetId: network.outputs.peSubnetId
     dataResourceGroupName: dataResourceGroupName
-    sqlServerName: larkSqlServerName(subscription().subscriptionId, sqlLocation)
-    keyVaultName: larkKeyVaultName(subscription().subscriptionId)
+    sqlServerName: sqlServerName
+    keyVaultName: keyVaultName
   }
+}
+
+var sqlServerName = larkSqlServerName(subscription().subscriptionId, sqlLocation)
+var keyVaultName = larkKeyVaultName(subscription().subscriptionId)
+
+module containerApps 'modules/container-apps.bicep' = {
+  name: 'lark-container-apps'
+  params: {
+    location: location
+    tags: tags
+    acaSubnetId: network.outputs.acaSubnetId
+    infrastructureResourceGroupName: containerAppsInfraResourceGroupName
+    dataResourceGroupName: dataResourceGroupName
+    logAnalyticsWorkspaceName: logAnalyticsWorkspaceName
+    sqlServerFqdn: '${sqlServerName}${environment().suffixes.sqlServerHostname}'
+    keyVaultFqdn: '${keyVaultName}${environment().suffixes.keyvaultDns}'
+  }
+  // The DNS check is only meaningful once the private A records and VNet links exist.
+  dependsOn: [
+    privateEndpoints
+    dnsLinks
+  ]
 }
 
 output vnetId string = network.outputs.vnetId
@@ -75,3 +103,6 @@ output acaSubnetId string = network.outputs.acaSubnetId
 output peSubnetId string = network.outputs.peSubnetId
 output linkedZones array = dnsLinks.outputs.linkedZones
 output privateEndpoints array = privateEndpoints.outputs.privateEndpointNames
+output containerAppsEnvironment string = containerApps.outputs.environmentName
+output helloFqdn string = containerApps.outputs.helloFqdn
+output dnsCheckJobName string = containerApps.outputs.dnsCheckJobName

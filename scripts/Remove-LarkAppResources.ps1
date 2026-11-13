@@ -20,6 +20,10 @@
 .PARAMETER LinkName
     Name of the VNet link created in every zone by infra/app/modules/dns-links.bicep.
 
+.PARAMETER InfraResourceGroup
+    Platform-managed resource group of the Container Apps environment (load balancer, public IPs). Azure deletes it
+    with the environment; the script only verifies that it's gone, because it keeps billing while it exists.
+
 .EXAMPLE
     ./scripts/Remove-LarkAppResources.ps1 -WhatIf
     Lists what would be deleted without deleting anything.
@@ -32,7 +36,8 @@
 param(
     [ValidateNotNullOrEmpty()][string]$AppResourceGroup = 'rg-lark-app',
     [ValidateNotNullOrEmpty()][string]$DnsResourceGroup = 'rg-lark-data',
-    [ValidateNotNullOrEmpty()][string]$LinkName = 'link-vnet-lark'
+    [ValidateNotNullOrEmpty()][string]$LinkName = 'link-vnet-lark',
+    [ValidateNotNullOrEmpty()][string]$InfraResourceGroup = 'rg-lark-app-infra'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -94,5 +99,14 @@ if (-not $WhatIfPreference) {
     else {
         Write-Warning "$(@($left).Count) resource(s) left in ${AppResourceGroup}:"
         $left | ForEach-Object { Write-Warning "  $($_.type)/$($_.name)" }
+    }
+    # 4. The Container Apps managed group is deleted by Azure with the environment, sometimes a few minutes later.
+    $deadline = (Get-Date).AddMinutes(10)
+    while (((& az group exists --name $InfraResourceGroup) -eq 'true') -and ((Get-Date) -lt $deadline)) { Start-Sleep -Seconds 30 }
+    if ((& az group exists --name $InfraResourceGroup) -eq 'true') {
+        Write-Warning "$InfraResourceGroup still exists after 10 minutes (load balancer + public IPs keep billing); check it in the portal"
+    }
+    else {
+        Write-Host "verified       $InfraResourceGroup is gone"
     }
 }

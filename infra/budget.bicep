@@ -27,6 +27,7 @@ param endDate string = '2036-11-01T00:00:00Z'
 param resourceGroupNames array = [
   'rg-lark-data'
   'rg-lark-app'
+  'rg-lark-app-infra' // Container Apps managed group: load balancer + public IPs (M4a)
 ]
 
 @description('Email for budget alerts. Supplied from a gitignored *.local.bicepparam file; @secure() keeps it out of deployment history.')

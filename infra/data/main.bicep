@@ -1,6 +1,6 @@
 // larkspur-azure-platform: persistent data-tier resources in rg-lark-data.
 // M2: private DNS zones. M3: Azure SQL (free tier) and Key Vault, both private-only, both locked.
-// M6 adds monitoring.
+// M4a: Log Analytics workspace (brought forward from M6 so Container Apps logs survive teardown).
 //
 // Why these live here and not in rg-lark-app: they hold state (data, secrets, DNS records) and cost ~$0 when idle,
 // while rg-lark-app's contents are torn down every session.
@@ -59,9 +59,20 @@ module keyVault 'modules/keyvault.bicep' = {
   }
 }
 
+module logAnalytics 'modules/log-analytics.bicep' = {
+  name: 'lark-log-analytics'
+  params: {
+    location: location
+    tags: tags
+    workspaceName: 'log-lark'
+  }
+}
+
 output dnsZoneNames array = [for (zone, i) in dnsZoneNames: zones[i].name]
 output sqlServerName string = sql.outputs.serverName
 output sqlServerFqdn string = sql.outputs.serverFqdn
 output sqlDatabaseName string = sql.outputs.databaseName
 output keyVaultName string = keyVault.outputs.vaultName
 output keyVaultUri string = keyVault.outputs.vaultUri
+output logAnalyticsWorkspaceName string = logAnalytics.outputs.workspaceName
+output logAnalyticsCustomerId string = logAnalytics.outputs.customerId

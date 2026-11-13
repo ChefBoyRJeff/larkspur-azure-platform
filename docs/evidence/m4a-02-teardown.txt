@@ -1,0 +1,28 @@
+=== M4a-02: end-of-session teardown (environment + managed group), 11-12-2026 21:57 EST ===
+=== Teardown: rg-lark-app (links in rg-lark-data), 11-12-2026 21:57 EST ===
+deleted link   privatelink.database.windows.net/link-vnet-lark
+deleted link   privatelink.vaultcore.azure.net/link-vnet-lark
+deleted        Microsoft.App/containerApps/ca-lark-hello
+deleted        Microsoft.App/jobs/job-lark-dnscheck
+deleted        Microsoft.App/managedEnvironments/cae-lark
+deleted        Microsoft.Network/privateEndpoints/pe-lark-kv
+deleted        Microsoft.Network/privateEndpoints/pe-lark-sql
+deleted        Microsoft.Network/virtualNetworks/vnet-lark
+deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-aca
+deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-pe
+verified       rg-lark-app is empty
+verified       rg-lark-app-infra is gone
+
+rg-lark-app-infra exists: false (expect false)
+--- persistent data tier ---
+Name
+------------------------------------------
+privatelink.database.windows.net
+privatelink.vaultcore.azure.net
+kv-lark-iqlx77ptc36ws
+sql-lark-jkw4epybg3jwc
+sql-lark-jkw4epybg3jwc/master
+sql-lark-jkw4epybg3jwc/sqldb-lark-tracking
+log-lark
+
+TEARDOWN FINISHED 11-12-2026 22:26 EST

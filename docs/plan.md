@@ -78,7 +78,8 @@ Every milestone includes portal work as well as Bicep/CLI, and saves sanitized e
 | M1 | Governance | Resource groups created from Bicep with tags; policy assignments at resource-group scope (require `costCenter` tag, allowed locations, SQL public network access denied in rg-lark-data); Entra groups `lark-ops` / `lark-dev` created in the portal with least-privilege RBAC; untagged and wrong-region deployments denied, compliant one allowed; second what-if NoChange |
 | M2 | Network | Private DNS zones (rg-lark-data) and vnet-lark with snet-aca, snet-pe and NSGs (rg-lark-app) deployed from Bicep; zones linked to the VNet; NSG enforcement enabled for private endpoints; second what-if NoChange; teardown script empties rg-lark-app and removes the links |
 | M3 | Data and secrets | SQL server (Entra-only auth, admin = `lark-sql-admins` group, public access disabled) with a free-tier database; Key Vault (RBAC, public access disabled, soft delete + purge protection); `CanNotDelete` lock on the database; private endpoints in snet-pe with DNS zone groups writing private A records; from outside the VNet SQL and Key Vault refuse connections; the M1 policy denies re-enabling SQL public access; the lock blocks deleting the database; teardown deletes the private endpoints with the protection in place; second what-if NoChange. Private endpoint cost confirmed in Cost Analysis (cost data lags about a day) |
-| M4 | App | Image built by GitHub Actions and pushed to GHCR; Container App reads shipments from SQL with its managed identity; from inside the VNet both data-tier names resolve to 10.60.1.x; app can pull its image and reach Entra ID from the private subnet; Cost Analysis shows no Container Apps management-hour charge |
+| M4a | Container Apps environment | Workload-profiles environment (Consumption only) in snet-aca, external; managed group named `rg-lark-app-infra` and covered by the budget; Log Analytics workspace (0.1 GB/day cap) in rg-lark-data; quickstart app answers HTTP 200 from the internet (proves ingress and egress from the private subnet); a job inside the VNet resolves both data-tier names to 10.60.1.x; teardown removes the environment and its managed group |
+| M4b | App | Image built by GitHub Actions and pushed to GHCR; Container App reads shipments from SQL with its managed identity (contained database user, least privilege) and a secret from Key Vault; Cost Analysis shows no Container Apps management-hour charge |
 | M5 | CI/CD | PR runs lint + what-if; merge to main waits for approval, deploys, verifies, and passes an idempotency check |
 | M6 | Observability | Diagnostic settings; alerts on HTTP 5xx, SQL "Free amount remaining" < 10,000 vCore-seconds, and budget; a workbook |
 | M7 | Recovery | SQL point-in-time restore with measured RTO/RPO; Key Vault secret soft-delete recovery; Container App revision rollback |
@@ -103,6 +104,8 @@ then an incident report with root cause and prevention.
 | Azure SQL Database free tier | $0: 100,000 vCore-seconds, 32 GB data and 32 GB backup per database per month; auto-pauses when idle |
 | Container Apps (Consumption) | $0 within the monthly free grant (180,000 vCPU-seconds, 360,000 GiB-seconds, 2M requests per subscription) |
 | Private endpoints (2) | ~$0.01/hr each; deleted every session |
+| Container Apps environment infrastructure (Standard Load Balancer + 2 public IPs) | ~$0.035–0.04/hr while the environment exists (estimate); deleted every session |
+| Log Analytics | Free ingestion allowance; 0.1 GB/day cap |
 | Private DNS zones (2, persistent) | ~$1.26/month |
 | Key Vault, alert rules | Pennies per month |
 | Log Analytics | Within the free ingestion allowance; daily cap set |
@@ -143,6 +146,8 @@ in Cost Analysis.
 | M3 | SQL server in Central US; everything else stays in East US (INC-001) | New SQL servers are provisioning-restricted for this subscription in eastus, eastus2, northcentralus, westus and westus2 (SQL capabilities probe, 11-12-2026); centralus is the closest available region. The private endpoint stays in vnet-lark and connects across regions; only `rg-lark-data` allows `centralus` |
 | M3 | SQL server name includes the region in its hash (INC-001) | Resource Manager kept the failed East US server's name reserved for that region |
 | M3 | Lock moved from SQL server to database; Key Vault lock removed (INC-002) | A lock also covers the private endpoint connection records Azure deletes with each endpoint, so it blocked teardown. The database lock still protects the data; Key Vault relies on soft delete + purge protection |
+| M4a | Log Analytics workspace moved from M6 to M4a | The Container Apps environment needs a log destination, and the in-VNet DNS check reads its output from the logs |
+| M4a | Container Apps managed resource group named `rg-lark-app-infra` and added to the budget | A VNet-integrated environment creates a Standard Load Balancer and public IPs billed outside Container Apps; under the default `ME_…` name the budget wouldn't see them |
 
 ## Teardown
 

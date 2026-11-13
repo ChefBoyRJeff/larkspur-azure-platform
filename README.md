@@ -1,6 +1,6 @@
 # Larkspur Logistics Azure Platform
 
-> **Status:** in progress. M0–M3 delivered; next is M4 (application on Azure Container Apps).
+> **Status:** in progress. M0–M4a delivered; next is M4b (the shipment-tracking app with a managed identity).
 > See [docs/plan.md](docs/plan.md) for the full plan and acceptance criteria.
 
 ## Scenario
@@ -16,13 +16,17 @@ landing zone architecture, and it is not a production system serving real custom
 ## Architecture (current state)
 
 ```
+  Internet ──HTTPS──▶ public IP (rg-lark-app-infra, managed by Container Apps)
+                           │
                           vnet-lark 10.60.0.0/16  (East US, rg-lark-app: rebuilt every session)
-                          ├─ snet-aca 10.60.0.0/27   delegated to Container Apps (M4)
+                          ├─ snet-aca 10.60.0.0/27   cae-lark (Container Apps, Consumption, external)
+                          │                          ├─ ca-lark-hello      test app (M4a; replaced in M4b)
+                          │                          └─ job-lark-dnscheck  resolves the data tier from inside the VNet
                           └─ snet-pe  10.60.1.0/27   NSG: only snet-aca → 1433 / 443
                                ├─ pe-lark-sql 10.60.1.5 ──▶ sql-lark-… (Central US) ─ sqldb-lark-tracking (free tier, locked)
                                └─ pe-lark-kv  10.60.1.4 ──▶ kv-lark-… (East US, purge protection)
 
-  rg-lark-data (persistent): SQL server + database, Key Vault, private DNS zones
+  rg-lark-data (persistent): SQL server + database, Key Vault, private DNS zones, log-lark (Log Analytics)
     privatelink.database.windows.net   A sql-lark-… → 10.60.1.5   (written by the endpoint's DNS zone group)
     privatelink.vaultcore.azure.net    A kv-lark-…  → 10.60.1.4
 
@@ -45,8 +49,8 @@ infra/
   budget.bicep                 $5/month budget on both resource groups (subscription scope)
   governance/                  resource groups, policy assignments, group RBAC (subscription scope)
   shared/naming.bicep          globally unique names, shared by both stacks
-  data/                        rg-lark-data: private DNS zones, SQL server + database, Key Vault (persistent)
-  app/                         rg-lark-app: VNet, NSGs, DNS links, private endpoints (rebuilt each session)
+  data/                        rg-lark-data: private DNS zones, SQL + database, Key Vault, Log Analytics (persistent)
+  app/                         rg-lark-app: VNet, NSGs, DNS links, private endpoints, Container Apps (rebuilt each session)
 scripts/
   Remove-LarkAppResources.ps1  end-of-session teardown
 docs/
@@ -66,7 +70,8 @@ generated from the committed `*.example.bicepparam` files.
 | M1 Governance | ✅ Delivered 11-12-2026 | [`docs/evidence/m1-*`](docs/evidence/) |
 | M2 Network | ✅ Delivered 11-12-2026 | [`docs/evidence/m2-*`](docs/evidence/) |
 | M3 Data and secrets | ✅ Delivered 11-12-2026 | [`docs/evidence/m3-*`](docs/evidence/), [INC-001](docs/incidents/INC-001-sql-region-restricted.md), [INC-002](docs/incidents/INC-002-lock-blocks-private-endpoint-teardown.md) |
-| M4–M9 | Not started | |
+| M4a Container Apps environment | ✅ Delivered 11-12-2026 | [`docs/evidence/m4a-*`](docs/evidence/) |
+| M4b–M9 | Not started | |
 
 ### M0: Prerequisites
 
@@ -248,6 +253,62 @@ of a built-in policy can't silently change these guardrails.
 `- etag / id / properties.provisioningState / type` under `privateDnsZoneConfigs`. These are read-only properties
 Azure adds to every zone config, and a template can't declare them. They don't indicate drift.
 
+### M4a: Container Apps environment
+
+**What I built** (`infra/app/modules/container-apps.bicep`, `infra/data/modules/log-analytics.bicep`)
+
+- `cae-lark`: a workload-profiles Container Apps environment (Consumption profile only) injected into `snet-aca`,
+  external, sending logs to `log-lark`.
+- `ca-lark-hello`: Microsoft's public quickstart image with external ingress, scaling 0–1. It's a stand-in that
+  proves ingress and egress before my own code runs on the platform.
+- `job-lark-dnscheck`: a one-shot job that resolves the SQL and Key Vault names from inside the VNet and prints the
+  answers.
+- `log-lark`: a Log Analytics workspace in `rg-lark-data` with a 0.1 GB/day cap and 30-day retention, so session
+  logs survive teardown.
+
+**Key decisions**
+
+- **Consumption only, no environment private endpoint.** Apps scale to zero and stay inside the monthly free grant,
+  and there's no dedicated-plan "management hour" charge (M0 pricing).
+- **I named the managed resource group.** A VNet-integrated environment creates its own group with a Standard Load
+  Balancer and public IPs, billed separately from Container Apps. Under the default `ME_…` name my budget (which
+  filters by resource group) wouldn't have seen that cost, so I set `infrastructureResourceGroup` to
+  `rg-lark-app-infra` and added it to the budget.
+- **Egress from a private subnet.** In M2 I made the subnets private (`defaultOutboundAccess: false`) and flagged a
+  risk that the environment couldn't pull images. The environment's own load balancer provides the outbound path,
+  and the image pull succeeded.
+- **A job to prove DNS.** My PC resolves the SQL name to a public IP, so only something inside `vnet-lark` can show
+  the private zone's answer. A job is the right shape for that: it runs once and exits. The database migration in M4b
+  uses the same pattern.
+- **Log Analytics moved forward from M6**, because the environment needs a log destination and the DNS check reads
+  its output from the logs.
+
+**Verification**
+
+| Check | Result |
+|---|---|
+| Environment | ✅ `Succeeded`, external, Consumption, logs to `log-lark`, managed group `rg-lark-app-infra` |
+| Managed group | ✅ load balancer + public IP, both carrying my `costCenter` tag (copied from the environment) |
+| Budget | ✅ covers `rg-lark-data`, `rg-lark-app`, `rg-lark-app-infra` |
+| Ingress and egress | ✅ HTTP 200 from my PC; the image was pulled through the private subnet |
+| DNS from inside the VNet | ✅ `sql-lark-….database.windows.net -> 10.60.1.5`, `kv-lark-….vault.azure.net -> 10.60.1.4` (match the endpoint NICs) |
+| Teardown | ✅ apps, job, environment, endpoints, VNet and NSGs deleted; `rg-lark-app-infra` removed by Azure; data tier intact |
+
+Log Analytics stores times in UTC; the DNS check ran at 02:45 UTC, which is 11-12-2026 21:45 EST.
+
+**Operational note:** deleting the environment is slow. My teardown took 29 minutes (21:57–22:26 EST), most of it
+waiting for the environment and its managed group to go away. The environment's load balancer and IPs bill until
+then, so I start teardown as soon as I'm done with a session.
+
+**What-if after deploy**
+
+| Item | Classification |
+|---|---|
+| Environment `appLogsConfiguration.customerId` shown as `[reference(...)]` | What-if limitation: it can't evaluate a reference into another resource group (same class as the `@secure()` noise in M0). Accepted. |
+| Environment `peerAuthentication` / `peerTrafficConfiguration` (`false`) | Defaults the template doesn't declare yet. I'm declaring them in M4b. |
+| `ca-lark-hello` `traffic`, `maxInactiveRevisions`, `exposedPort`, `runningStatus` | Defaults plus a read-only status on the stand-in app. The M4b app module declares the settable ones. |
+| DNS zone groups | Known read-only noise (see M3) |
+
 ## Cost
 
 | Item | Running cost |
@@ -256,6 +317,9 @@ Azure adds to every zone config, and a template can't declare them. They don't i
 | Key Vault (idle) | ~$0 |
 | Private DNS zones (2, persistent) | ~$1.26/month |
 | Private endpoints (2) | ~$0.01/hr each, only while a session is running |
+| Container Apps environment infrastructure (load balancer + 2 public IPs) | ~$0.035–0.04/hr (estimate), only while a session is running |
+| Container Apps usage | within the monthly free grant (scale to zero) |
+| Log Analytics | within the free ingestion allowance; 0.1 GB/day cap |
 | Budget alert | $5/month on both resource groups |
 
 ## Teardown
@@ -267,5 +331,6 @@ At the end of every session I run:
 ./scripts/Remove-LarkAppResources.ps1           # delete and verify
 ```
 
-It removes the DNS zone links, then everything inside `rg-lark-app` in dependency order, and verifies the group is
-empty. `rg-lark-data` stays: it holds the data and costs about $0 when idle.
+It removes the DNS zone links, then everything inside `rg-lark-app` in dependency order (apps and jobs, environment,
+private endpoints, VNet, NSGs, identities), verifies the group is empty, and waits up to 10 minutes to confirm Azure
+has removed `rg-lark-app-infra`. `rg-lark-data` stays: it holds the data and logs and costs about $0 when idle.

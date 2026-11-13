@@ -1,0 +1,162 @@
+=== M4a-01: Container Apps environment, ingress/egress, in-VNet DNS check, 11-12-2026 21:36 EST ===
+--- deploy budget (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "groups": [
+    "rg-lark-data",
+    "rg-lark-app",
+    "rg-lark-app-infra"
+  ],
+  "state": "Succeeded"
+}
+
+--- lint data (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+--- deploy data (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded"
+}
+
+--- workspace (exit 0) ---
+{
+  "costCenter": "CC-LARK-01",
+  "dailyCapGb": 0.1,
+  "name": "log-lark",
+  "retentionDays": 30,
+  "sku": "PerGB2018"
+}
+
+--- lint app (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+
+
+--- deploy app (exit 0) ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+{
+  "state": "Succeeded"
+}
+
+--- environment (exit 0) ---
+WARNING: The behavior of this command has been altered by the following extension: containerapp
+{
+  "infraRg": "rg-lark-app-infra",
+  "internal": false,
+  "logs": "log-analytics",
+  "profiles": [
+    "Consumption"
+  ],
+  "state": "Succeeded"
+}
+
+--- managed group rg-lark-app-infra (billed outside Container Apps) (exit 0) ---
+Name            CostCenter
+--------------  ------------
+capp-svc-lb-ip  CC-LARK-01
+capp-svc-lb     CC-LARK-01
+
+--- HTTPS from this PC to ca-lark-hello (scale from zero; retries up to 3 minutes) ---
+HTTP status: 200 (expect 200)
+--- hello revision (exit 0) ---
+Revision                Active    Running            Health    Replicas
+----------------------  --------  -----------------  --------  ----------
+ca-lark-hello--ahyf3jp  True      RunningAtMaxScale  Healthy   1
+
+job execution: job-lark-dnscheck-8320jse
+job execution status: Succeeded (expect Succeeded)
+--- DNS answers from INSIDE vnet-lark (from Log Analytics; expect 10.60.1.x for both) ---
+
+TimeGenerated         Log_s
+-------------         -----
+11/13/2026 2:45:20 AM LARK-DNS kv-lark-iqlx77ptc36ws.vault.azure.net -> 10.60.1.4
+11/13/2026 2:45:20 AM LARK-DNS sql-lark-jkw4epybg3jwc.database.windows.net -> 10.60.1.5
+
+
+--- what-if again: app ---
+WARNING: A new Bicep release is available: v0.49.2. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  - Delete
+  ~ Modify
+  = Nochange
+  * Ignore
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-app
+
+  ~ Microsoft.App/containerApps/ca-lark-hello [2024-03-01]
+    - properties.configuration.ingress.exposedPort:  0
+    - properties.configuration.ingress.traffic: [
+        0:
+
+          latestRevision: true
+          weight:         100
+
+      ]
+    - properties.configuration.maxInactiveRevisions: 100
+    - properties.runningStatus:                      "Running"
+
+  ~ Microsoft.App/managedEnvironments/cae-lark [2024-03-01]
+    - properties.peerAuthentication:
+
+        mtls.enabled: false
+
+    - properties.peerTrafficConfiguration:
+
+        encryption.enabled: false
+
+    ~ properties.appLogsConfiguration.logAnalyticsConfiguration.customerId: "<guid>" => "[reference('/subscriptions/<guid>/resourceGroups/rg-lark-data/providers/Microsoft.OperationalInsights/workspaces/log-lark', '2023-09-01').customerId]"
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default [2024-05-01]
+    ~ properties.privateDnsZoneConfigs: [
+      ~ 0:
+
+        - etag:                         "W/"<guid>""
+        - id:                           "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-kv/privateDnsZoneGroups/default/privateDnsZoneConfigs/privatelink-vaultcore-azure-net"
+        - properties.provisioningState: "Succeeded"
+        - type:                         "Microsoft.Network/privateEndpoints/privateDnsZoneGroups/privateDnsZoneConfigs"
+
+      ]
+
+  ~ Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default [2024-05-01]
+    ~ properties.privateDnsZoneConfigs: [
+      ~ 0:
+
+        - etag:                         "W/"<guid>""
+        - id:                           "/subscriptions/<guid>/resourceGroups/rg-lark-app/providers/Microsoft.Network/privateEndpoints/pe-lark-sql/privateDnsZoneGroups/default/privateDnsZoneConfigs/privatelink-database-windows-net"
+        - properties.provisioningState: "Succeeded"
+        - type:                         "Microsoft.Network/privateEndpoints/privateDnsZoneGroups/privateDnsZoneConfigs"
+
+      ]
+
+  = Microsoft.App/jobs/job-lark-dnscheck [2024-03-01]
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-aca [2024-05-01]
+  = Microsoft.Network/networkSecurityGroups/nsg-lark-pe [2024-05-01]
+  = Microsoft.Network/privateEndpoints/pe-lark-kv [2024-05-01]
+  = Microsoft.Network/privateEndpoints/pe-lark-sql [2024-05-01]
+  = Microsoft.Network/virtualNetworks/vnet-lark [2024-05-01]
+  * Microsoft.Network/networkInterfaces/nic-pe-lark-kv
+  * Microsoft.Network/networkInterfaces/nic-pe-lark-sql
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-lark-data
+
+  = Microsoft.Network/privateDnsZones/privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  = Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-vnet-lark [2020-06-01]
+  * Microsoft.KeyVault/vaults/kv-lark-iqlx77ptc36ws
+  * Microsoft.Network/privateDnsZones/privatelink.database.windows.net
+  * Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net
+  * Microsoft.OperationalInsights/workspaces/log-lark
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/master
+  * Microsoft.Sql/servers/sql-lark-jkw4epybg3jwc/databases/sqldb-lark-tracking
+
+Resource changes: 4 to modify, 8 no change, 9 to ignore.
+
+BLOCK COMPLETED 11-12-2026 21:53 EST
+NOTE: Log Analytics TimeGenerated values are UTC. 11/13/2026 2:45:20 AM UTC = 11-12-2026 21:45 EST.
