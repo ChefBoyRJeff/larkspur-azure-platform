@@ -6,8 +6,9 @@
 
 .DESCRIPTION
   Adapted from my azure-bicep-cicd-pipeline project. Idempotent: every step checks what exists and only creates
-  what's missing, so re-running is safe. The output contains names, roles and scopes only (no subscription, tenant,
-  client or object IDs), so the -OutFile log can be committed as evidence after the usual leak check.
+  what's missing, and custom roles are synced from their JSON files, so re-running is safe. The output contains
+  names, roles and scopes only (no subscription, tenant, client or object IDs), so the -OutFile log can be committed
+  as evidence after the usual leak check.
 
   Identities
     gh-lark-plan    pull requests: read + what-if + validate (custom role "Larkspur What-If Reader")
@@ -93,9 +94,27 @@ Log '--- 1. Custom roles ---'
 # every scope until it replicates, but its ID is known the moment it's created.
 $RoleIds = @{ 'Contributor' = 'b24988ac-6180-42a0-ab88-20f7382dd24c' }   # built-in, same ID in every tenant
 foreach ($r in $Roles) {
-  $found = Invoke-Az role definition list --custom-role-only true --name $r.Name --scope (Get-RgScope $r.CheckScope) --query '[0].name' -o tsv
-  if ($found) { $RoleIds[$r.Name] = $found; Log "  exists   $($r.Name)"; continue }
   $json = (Get-Content (Join-Path $RoleDir $r.File) -Raw).Replace('{subscriptionId}', $SubscriptionId)
+  $found = Invoke-Az role definition list --custom-role-only true --name $r.Name --scope (Get-RgScope $r.CheckScope) -o json | ConvertFrom-Json | Select-Object -First 1
+  if ($found) {
+    # The JSON file is the source of truth: sync permissions only when they differ from what's deployed.
+    $want = $json | ConvertFrom-Json
+    $have = $found.permissions | Select-Object -First 1
+    $same = (Compare-Object @($want.Actions | Sort-Object) @($have.actions | Sort-Object)).Count -eq 0 -and
+            (Compare-Object @($want.DataActions | Sort-Object) @($have.dataActions | Sort-Object)).Count -eq 0
+    $RoleIds[$r.Name] = $found.name
+    $added = @($want.Actions | Where-Object { $have.actions -notcontains $_ })
+    if ($same) { Log "  exists   $($r.Name)"; continue }
+    # Update from the deployed definition (az role definition list format: name = GUID, roleName = display name),
+    # with only the permissions replaced. az role definition update needs that format, not the create format.
+    $have.actions = @($want.Actions); $have.notActions = @($want.NotActions)
+    $have.dataActions = @($want.DataActions); $have.notDataActions = @($want.NotDataActions)
+    $found.description = $want.Description
+    $tmp = New-TempJson ($found | ConvertTo-Json -Depth 10)
+    try { Invoke-Az role definition update --role-definition "@$tmp" -o none } finally { Remove-Item $tmp -ErrorAction SilentlyContinue }
+    Log "  updated  $($r.Name) (added: $($added -join ', '))"
+    continue
+  }
   $tmp = New-TempJson $json
   try { $RoleIds[$r.Name] = Invoke-Az role definition create --role-definition "@$tmp" --query name -o tsv } finally { Remove-Item $tmp -ErrorAction SilentlyContinue }
   Log "  created  $($r.Name)"

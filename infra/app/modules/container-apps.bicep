@@ -11,9 +11,11 @@
 // - infrastructureResourceGroup = rg-lark-app-infra so the budget covers the load balancer + public IPs the platform
 //   creates. It's deleted automatically with the environment.
 // - Logs go to the persistent workspace in rg-lark-data through an Azure Monitor diagnostic setting (M5). The M4a
-//   version used destination 'log-analytics', which reads the workspace's shared key at deploy time: whoever deploys
-//   (or even runs what-if) would need permission to read that key. A diagnostic setting needs no key, and the logs
-//   land in the resource-specific tables (ContainerAppConsoleLogs, ContainerAppSystemLogs).
+//   version used destination 'log-analytics', which put listKeys() in the template: the key value went through the
+//   deployment, and even what-if had to read it. With a diagnostic setting the key never appears in the template or the
+//   deployment history, and what-if needs only read. Azure still checks the linked workspace at deploy time, so the
+//   deploy identity needs Microsoft.OperationalInsights/workspaces/sharedKeys/action on log-lark (INC-003). Logs land in
+//   the resource-specific tables (ContainerAppConsoleLogs, ContainerAppSystemLogs).
 // - peerAuthentication / peerTrafficConfiguration declared at Azure's defaults (off), so what-if shows no drift.
 //   Both apply to app-to-app traffic inside the environment; this design has one app, so there's nothing to encrypt
 //   between apps yet (noted as a production improvement).

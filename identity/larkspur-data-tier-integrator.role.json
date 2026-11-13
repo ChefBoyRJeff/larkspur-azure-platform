@@ -1,7 +1,7 @@
 {
   "Name": "Larkspur Data-Tier Integrator",
   "IsCustom": true,
-  "Description": "What deploying and tearing down the Larkspur app stack needs in rg-lark-data, and nothing more: link vnet-lark to the private DNS zones, register private endpoint records, auto-approve private endpoint connections to SQL and Key Vault, and attach the persistent managed identities. Cannot change or delete the SQL server, database, Key Vault, secrets, identities or zones.",
+  "Description": "What deploying and tearing down the Larkspur app stack needs in rg-lark-data, and nothing more: link vnet-lark to the private DNS zones, register private endpoint records, auto-approve private endpoint connections to SQL and Key Vault, attach the persistent managed identities, and point a diagnostic setting at log-lark (linked-scope check). Cannot change or delete the SQL server, database, Key Vault, secrets, identities or zones.",
   "Actions": [
     "*/read",
     "Microsoft.Resources/deployments/write",
@@ -12,7 +12,8 @@
     "Microsoft.Network/privateDnsZones/join/action",
     "Microsoft.ManagedIdentity/userAssignedIdentities/assign/action",
     "Microsoft.Sql/servers/privateEndpointConnectionsApproval/action",
-    "Microsoft.KeyVault/vaults/privateEndpointConnectionsApproval/action"
+    "Microsoft.KeyVault/vaults/privateEndpointConnectionsApproval/action",
+    "Microsoft.OperationalInsights/workspaces/sharedKeys/action"
   ],
   "NotActions": [],
   "DataActions": [],

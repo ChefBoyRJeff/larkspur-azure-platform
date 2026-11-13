@@ -88,19 +88,35 @@ jobs:
           az deployment group what-if "${ARGS[@]}" --name "whatif-$GITHUB_RUN_NUMBER" 2>&1 | clean | tee before.txt
           echo "::endgroup::"
           echo "**What-if before deploy:** $(grep -E '^Resource changes' before.txt || echo 'n/a')" >> "$GITHUB_STEP_SUMMARY"
-          echo "::group::Deploy (the Container Apps environment can take 5-15 minutes)"
-          if ! az deployment group create "${ARGS[@]}" --name lark-app --query properties.provisioningState -o tsv 2> err.txt; then
-            clean < err.txt | cut -c1-800
-            echo "::endgroup::"
-            echo "::group::Failed operations (root cause)"
+          failed_ops() {   # print every failed operation in the nested deployments, full message (root cause)
             for d in lark-app lark-network lark-private-endpoints lark-container-apps; do
               az deployment operation group list -g "$RG" -n "$d" -o json 2>/dev/null \
                 | jq -r --arg d "$d" '.[] | select(.properties.provisioningState == "Failed")
-                    | "\($d): \(.properties.targetResource.resourceName // "?"): \(.properties.statusMessage.error.code // ""): \(.properties.statusMessage.error.message // "" | .[0:400])"' || true
-            done | clean | tee failed-ops.txt
+                    | "\($d): \(.properties.targetResource.resourceName // "?"): \(.properties.statusMessage.error.code // ""): \(.properties.statusMessage.error.message // "" | .[0:1500])"' || true
+            done
             az deployment operation group list -g rg-lark-data -n lark-dns-links -o json 2>/dev/null \
-              | jq -r '.[] | select(.properties.provisioningState == "Failed") | "lark-dns-links: \(.properties.statusMessage.error.code // ""): \(.properties.statusMessage.error.message // "" | .[0:400])"' \
-              | clean | tee -a failed-ops.txt || true
+              | jq -r '.[] | select(.properties.provisioningState == "Failed") | "lark-dns-links: \(.properties.statusMessage.error.code // ""): \(.properties.statusMessage.error.message // "" | .[0:1500])"' || true
+          }
+          deploy() { az deployment group create "${ARGS[@]}" --name lark-app --query properties.provisioningState -o tsv 2> err.txt; }
+          echo "::group::Deploy (the Container Apps environment can take 5-15 minutes)"
+          ok=true
+          if ! deploy; then
+            ok=false
+            failed_ops | clean | tee failed-ops.txt
+            # Transient: Azure is still finishing the delete of a resource with the same name from the last teardown
+            # (seen in INC-003). Only that case is retried, once; every other failure stops the run.
+            if grep -q 'pending delete operation' failed-ops.txt; then
+              echo "::warning::A previous delete is still pending in Azure. Waiting 120 seconds, then retrying once."
+              echo "**Deploy:** retried once (pending delete from the previous teardown)" >> "$GITHUB_STEP_SUMMARY"
+              sleep 120
+              if deploy; then ok=true; else failed_ops | clean > failed-ops.txt; fi
+            fi
+          fi
+          if [ "$ok" != true ]; then
+            clean < err.txt | cut -c1-800
+            echo "::endgroup::"
+            echo "::group::Failed operations (root cause)"
+            cat failed-ops.txt
             echo "::endgroup::"
             { echo '**Deploy: FAILED**'; echo '```'; cat failed-ops.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
             exit 1
