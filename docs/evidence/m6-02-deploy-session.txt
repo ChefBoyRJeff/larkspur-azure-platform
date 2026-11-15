@@ -1,0 +1,11 @@
+=== M6-02: deploy session (workflow run 43740659448), started 11-15-2026 12:21 PM EST, approved in production ===
+What-if before deploy: Resource changes: 15 to create, 12 to ignore (includes + Microsoft.Insights/metricAlerts/alert-lark-api-5xx)
+What-if + deploy: 12:22 PM-12:27 PM EST; migration 12:27 PM-12:28 PM EST; smoke tests 12:28 PM-12:29 PM EST
+migration job-lark-migrate-kucbfix: Succeeded
+Smoke tests from the internet:
+  GET /healthz -> 200 (expect 200): {"status":"ok"}
+  GET /readyz -> 200 (expect 200): {"ready":true,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.5"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}
+  GET /shipments/LRK100001 -> 200 (expect 200): {"trackingNumber":"LRK100001","origin":"Larkspur HQ","destination":"North Depot","status":"Delivered","lastUpdatedUtc":"2026-11-13T13:51:11Z"}
+  GET /shipments/LRK999999 -> 404 (expect 404): {"detail":"Shipment not found."}
+  GET /shipments/not-a-number -> 400 (expect 400): {"detail":"Tracking numbers look like LRK123456."}
+Idempotency: PASS (no drift after filtering documented what-if noise, with alert-lark-api-5xx in the stack)

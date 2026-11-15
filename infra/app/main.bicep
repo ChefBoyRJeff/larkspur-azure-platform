@@ -2,7 +2,7 @@
 // The resource group itself is persistent (it carries the M1 policy and RBAC assignments); everything inside it is
 // torn down at the end of every session by scripts/Remove-LarkAppResources.ps1 and redeployed from this template.
 // M2: network and private DNS links. M3: private endpoints to SQL and Key Vault. M4a: Container Apps environment. M4b: tracking API + migration job.
-// M6: the API's 5xx alert (notifies the persistent action group in rg-lark-data).
+// M6: the API's 5xx log search alert (notifies the persistent action group in rg-lark-data; INC-005).
 targetScope = 'resourceGroup'
 
 import { larkSqlServerName, larkKeyVaultName } from '../shared/naming.bicep'
@@ -122,9 +122,11 @@ module alerts 'modules/alerts.bicep' = {
   name: 'lark-alerts'
   params: {
     tags: tags
+    location: location
     apiName: containerApps.outputs.apiName
     dataResourceGroupName: dataResourceGroupName
     actionGroupName: actionGroupName
+    logAnalyticsWorkspaceName: logAnalyticsWorkspaceName
   }
 }
 

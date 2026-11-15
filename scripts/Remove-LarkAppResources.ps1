@@ -51,7 +51,8 @@ function Invoke-Az {
 }
 
 $deleteOrder = @(
-    'Microsoft.Insights/metricAlerts'   # M6: the API's 5xx alert (an orphaned rule would keep the group from being empty)
+    'Microsoft.Insights/scheduledQueryRules'   # M6: the API's 5xx log search alert (an orphaned rule keeps the group non-empty)
+    'Microsoft.Insights/metricAlerts'          # the first 5xx alert was a metric alert (INC-005); kept for leftovers
     'Microsoft.App/containerApps'
     'Microsoft.App/jobs'
     'Microsoft.App/managedEnvironments'
