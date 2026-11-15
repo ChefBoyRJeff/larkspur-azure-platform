@@ -2,7 +2,8 @@
 // M2: private DNS zones. M3: Azure SQL (free tier) and Key Vault, both private-only, both locked.
 // M4a: Log Analytics workspace (brought forward from M6 so Container Apps logs survive teardown).
 // M4b: persistent managed identities for the API and the migration job, with their Key Vault roles.
-// M6: action group and the alerts that watch persistent resources (SQL free amount, Resource Health).
+// M6: action group and the alerts that watch persistent resources (SQL free amount, Resource Health), and the
+//     Larkspur Operations workbook.
 //
 // Why these live here and not in rg-lark-app: they hold state (data, secrets, DNS records) and cost ~$0 when idle,
 // while rg-lark-app's contents are torn down every session.
@@ -93,6 +94,17 @@ module monitoring 'modules/monitoring.bicep' = {
   }
 }
 
+module workbook 'modules/workbook.bicep' = {
+  name: 'lark-workbook'
+  params: {
+    location: location
+    tags: tags
+    logAnalyticsWorkspaceName: logAnalytics.outputs.workspaceName
+    sqlServerName: sql.outputs.serverName
+    sqlDatabaseName: sql.outputs.databaseName
+  }
+}
+
 output dnsZoneNames array = [for (zone, i) in dnsZoneNames: zones[i].name]
 output sqlServerName string = sql.outputs.serverName
 output sqlServerFqdn string = sql.outputs.serverFqdn
@@ -106,3 +118,4 @@ output appIdentityClientId string = identities.outputs.appIdentityClientId
 output migratorIdentityName string = identities.outputs.migratorIdentityName
 output migratorPrincipalId string = identities.outputs.migratorPrincipalId
 output actionGroupName string = monitoring.outputs.actionGroupName
+output workbookName string = workbook.outputs.workbookName

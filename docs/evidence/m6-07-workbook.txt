@@ -1,0 +1,17 @@
+=== M6-07: Larkspur Operations workbook from code, 11-15-2026 04:59 PM EST ===
+  Saving from the portal was refused by policy: "Every Larkspur resource needs a costCenter tag" (the portal Save dialog has no tags field); deployed from Bicep with the standard tags instead.
+  ag-lark-ops email: parameter file and Azure match by SHA-256 = True (expect True)
+  Modify   Microsoft.Insights/actionGroups/ag-lark-ops: emailAddress only - @secure() value hidden from what-if; hashes match, so no real change
+  Create   Microsoft.Insights/workbooks/<guid> (Larkspur Operations)
+  Modify   Microsoft.Authorization/roleAssignments/<guid>: documented noise only ([reference()] / NoEffect)
+  Modify   Microsoft.Authorization/roleAssignments/<guid>: documented noise only ([reference()] / NoEffect)
+  deploy: Succeeded
+  after deploy: ag-lark-ops email unchanged = True; receiverStatus=Enabled
+--- Verify, 11-15-2026 05:02 PM EST ---
+  code workbook: displayName='Larkspur Operations' category=workbook costCenter=CC-LARK-01 items=6 placeholders left=0 (expect 0)
+    item: Requests by status class
+    item: 5xx responses (INC-005 controlled failures)
+    item: App warnings and errors
+    item: SQL free tier: vCore-seconds remaining this month (alert below 10,000)
+  deleted the portal-saved copy of 'Larkspur Operations' (replaced by the code version)
+  workbooks in rg-lark-data now: 1 (expect 1)

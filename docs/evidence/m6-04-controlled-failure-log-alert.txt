@@ -1,0 +1,22 @@
+=== M6-04: controlled failure, run 2 - log search alert on ContainerAppHTTPLogs, 11-15-2026 01:52 PM EST ===
+  alert rule: kind=LogAlert enabled=True every=PT5M window=PT15M threshold: Count GreaterThanOrEqual 5
+--- Failure injected in the portal: Allow-SQL-From-App (priority 100, TCP 10.60.0.0/27 -> port 1433) set to Deny, confirmed 11-15-2026 01:52 PM EST ---
+--- 10 parallel requests to /shipments/LRK100001, started 11-15-2026 01:52 PM EST ---
+  request  1: HTTP 500 after 166s
+  request  2: HTTP 500 after 166s
+  request  3: HTTP 500 after 166s
+  request  4: HTTP 500 after 166s
+  request  5: HTTP 500 after 166s
+  request  6: HTTP 500 after 166s
+  request  7: HTTP 500 after 166s
+  request  8: HTTP 500 after 166s
+  request  9: HTTP 500 after 166s
+  request 10: HTTP 500 after 166s
+requests finished 11-15-2026 01:55 PM EST
+  FIRED: Sev1, alertState=New, started 02:04 PM EST (requests finished 11-15-2026 01:55 PM EST), detected at check 11
+--- Remediation in the portal: Allow-SQL-From-App set back to Allow, confirmed 11-15-2026 02:12 PM EST ---
+  GET /readyz                -> 200 in 127.8s
+  GET /shipments/LRK100001   -> 200 in 0.6s
+  GET /shipments/LRK999999   -> 404 in 5.5s
+  RESOLVED: monitorCondition=Resolved, fired 02:04 PM EST, resolved 02:20 PM EST
+  emails received: "Fired" (after 02:04 PM EST) and "Resolved" (after 02:20 PM EST) from ag-lark-ops
