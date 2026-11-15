@@ -2,6 +2,7 @@
 // M2: private DNS zones. M3: Azure SQL (free tier) and Key Vault, both private-only, both locked.
 // M4a: Log Analytics workspace (brought forward from M6 so Container Apps logs survive teardown).
 // M4b: persistent managed identities for the API and the migration job, with their Key Vault roles.
+// M6: action group and the alerts that watch persistent resources (SQL free amount, Resource Health).
 //
 // Why these live here and not in rg-lark-app: they hold state (data, secrets, DNS records) and cost ~$0 when idle,
 // while rg-lark-app's contents are torn down every session.
@@ -23,6 +24,10 @@ param sqlAdminGroupName string
 
 @description('Object ID of that Entra group (from the gitignored local parameter file)')
 param sqlAdminGroupObjectId string
+
+@description('Email that receives platform alerts (from the gitignored local parameter file)')
+@secure()
+param alertEmail string
 
 // Zone names come from Microsoft's private endpoint DNS table. The SQL zone is built from environment() so the
 // template has no hard-coded cloud-specific hostname (linter rule no-hardcoded-env-urls).
@@ -78,6 +83,16 @@ module identities 'modules/identities.bicep' = {
   }
 }
 
+module monitoring 'modules/monitoring.bicep' = {
+  name: 'lark-monitoring'
+  params: {
+    tags: tags
+    alertEmail: alertEmail
+    sqlServerName: sql.outputs.serverName
+    sqlDatabaseName: sql.outputs.databaseName
+  }
+}
+
 output dnsZoneNames array = [for (zone, i) in dnsZoneNames: zones[i].name]
 output sqlServerName string = sql.outputs.serverName
 output sqlServerFqdn string = sql.outputs.serverFqdn
@@ -90,3 +105,4 @@ output appIdentityName string = identities.outputs.appIdentityName
 output appIdentityClientId string = identities.outputs.appIdentityClientId
 output migratorIdentityName string = identities.outputs.migratorIdentityName
 output migratorPrincipalId string = identities.outputs.migratorPrincipalId
+output actionGroupName string = monitoring.outputs.actionGroupName

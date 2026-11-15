@@ -19,3 +19,4 @@ param containerImage = readEnvironmentVariable('LARK_IMAGE', 'ghcr.io/chefboyrje
 param sqlDatabaseName = 'sqldb-lark-tracking'
 param appIdentityName = 'id-lark-tracking-api'
 param migratorIdentityName = 'id-lark-migrator'
+param actionGroupName = 'ag-lark-ops'

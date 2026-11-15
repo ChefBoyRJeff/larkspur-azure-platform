@@ -2,9 +2,13 @@
 // The resource group itself is persistent (it carries the M1 policy and RBAC assignments); everything inside it is
 // torn down at the end of every session by scripts/Remove-LarkAppResources.ps1 and redeployed from this template.
 // M2: network and private DNS links. M3: private endpoints to SQL and Key Vault. M4a: Container Apps environment. M4b: tracking API + migration job.
+// M6: the API's 5xx alert (notifies the persistent action group in rg-lark-data).
 targetScope = 'resourceGroup'
 
 import { larkSqlServerName, larkKeyVaultName } from '../shared/naming.bicep'
+
+@description('Action group in the data resource group that receives Larkspur alerts (M6)')
+param actionGroupName string
 
 @description('Region for the application stack')
 param location string
@@ -114,6 +118,16 @@ module containerApps 'modules/container-apps.bicep' = {
   ]
 }
 
+module alerts 'modules/alerts.bicep' = {
+  name: 'lark-alerts'
+  params: {
+    tags: tags
+    apiName: containerApps.outputs.apiName
+    dataResourceGroupName: dataResourceGroupName
+    actionGroupName: actionGroupName
+  }
+}
+
 output vnetId string = network.outputs.vnetId
 output acaSubnetId string = network.outputs.acaSubnetId
 output peSubnetId string = network.outputs.peSubnetId
@@ -123,3 +137,4 @@ output containerAppsEnvironment string = containerApps.outputs.environmentName
 output apiFqdn string = containerApps.outputs.apiFqdn
 output migrateJobName string = containerApps.outputs.migrateJobName
 output dnsCheckJobName string = containerApps.outputs.dnsCheckJobName
+output apiAlertName string = alerts.outputs.apiAlertName

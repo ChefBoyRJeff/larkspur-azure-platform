@@ -89,7 +89,7 @@ jobs:
           echo "::endgroup::"
           echo "**What-if before deploy:** $(grep -E '^Resource changes' before.txt || echo 'n/a')" >> "$GITHUB_STEP_SUMMARY"
           failed_ops() {   # print every failed operation in the nested deployments, full message (root cause)
-            for d in lark-app lark-network lark-private-endpoints lark-container-apps; do
+            for d in lark-app lark-network lark-private-endpoints lark-container-apps lark-alerts; do
               az deployment operation group list -g "$RG" -n "$d" -o json 2>/dev/null \
                 | jq -r --arg d "$d" '.[] | select(.properties.provisioningState == "Failed")
                     | "\($d): \(.properties.targetResource.resourceName // "?"): \(.properties.statusMessage.error.code // ""): \(.properties.statusMessage.error.message // "" | .[0:1500])"' || true
