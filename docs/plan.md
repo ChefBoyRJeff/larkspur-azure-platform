@@ -156,6 +156,9 @@ in Cost Analysis.
 | M5 | Diagnostic setting declared exactly as Azure stores it (audit group and AllMetrics disabled, zero retention, no destination type) | Azure fills those in and stores the destination type as null; declaring only what I wanted made every deploy show drift |
 | M5 | Deploy identity gets custom "Larkspur Group Reader" (resourceGroups/read) on the subscription (INC-004) | Container Apps creates and deletes rg-lark-app-infra itself, so no role can be granted on it in advance; without read on the subscription, teardown can't prove the billing group is gone. This is the design's only subscription-scope assignment |
 | M5 | `deploy` retries once, only for "pending delete operation" (INC-003) | Azure briefly rejects recreating a container app whose identity record from the last teardown is still being cleaned up; every other failure stops the run |
+| M6 | Persistent alerts in rg-lark-data, the API's alert in the app stack | An alert has to be created after the resource it watches and deleted before teardown can prove the group empty |
+| M6 | API 5xx alert is a log search alert on ContainerAppHTTPLogs, not a metric alert (INC-005) | The `Requests` metric recorded 2 of at least 15 requests in the controlled failure; the ingress log recorded all of them |
+| M6 | Workbook built in the portal, deployed from Bicep | The M1 tag policy refused the portal save (no tags field); code adds `costCenter` and keeps it reproducible |
 
 ## Teardown
 

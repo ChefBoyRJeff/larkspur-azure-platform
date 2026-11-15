@@ -1,0 +1,135 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "larkspur-timerange",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 259200000
+                },
+                {
+                  "durationMs": 604800000
+                }
+              ]
+            },
+            "timeContext": {
+              "durationMs": 86400000
+            },
+            "value": {
+              "durationMs": 86400000
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "name": "parameters - 1"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Larkspur Operations: tracking API and data tier"
+      },
+      "name": "text - 4"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "ContainerAppHTTPLogs\n| where ContainerAppName == \"ca-lark-tracking-api\"\n| summarize Requests = count() by bin(TimeGenerated, 5m), StatusClass = strcat(tostring(StatusCode / 100), \"xx\")",
+        "size": 0,
+        "title": "Requests by status class",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{workspaceId}"
+        ],
+        "visualization": "timechart"
+      },
+      "name": "query - 2"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "ContainerAppHTTPLogs\n| where ContainerAppName == \"ca-lark-tracking-api\" and StatusCode >= 500\n| project TimeGenerated, Method, Path, StatusCode, DurationSeconds = RequestDuration / 1000, RevisionName\n| order by TimeGenerated desc",
+        "size": 0,
+        "title": "5xx responses (INC-005 controlled failures)",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{workspaceId}"
+        ],
+        "visualization": "table",
+        "timeContextFromParameter": "TimeRange"
+      },
+      "name": "query - 3"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "ContainerAppConsoleLogs\n| where Log has_any (\"WARNING\", \"ERROR\", \"Traceback\")\n| summarize Lines = count() by bin(TimeGenerated, 5m), Source = coalesce(ContainerAppName, \"job\")",
+        "size": 0,
+        "title": "App warnings and errors",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{workspaceId}"
+        ],
+        "visualization": "barchart",
+        "timeContextFromParameter": "TimeRange"
+      },
+      "name": "query - 4"
+    },
+    {
+      "type": 10,
+      "content": {
+        "chartId": "workbook-larkspur-sql-free-amount",
+        "version": "MetricsItem/2.0",
+        "size": 0,
+        "chartType": 2,
+        "resourceType": "microsoft.sql/servers/databases",
+        "metricScope": 0,
+        "resourceIds": [
+          "{sqlDatabaseId}"
+        ],
+        "timeContextFromParameter": "TimeRange",
+        "metrics": [
+          {
+            "namespace": "microsoft.sql/servers/databases",
+            "metric": "microsoft.sql/servers/databases-Basic-free_amount_remaining",
+            "aggregation": 2
+          }
+        ],
+        "title": "SQL free tier: vCore-seconds remaining this month (alert below 10,000)",
+        "gridSettings": {
+          "rowLimit": 10000
+        }
+      },
+      "name": "metric - 5"
+    }
+  ],
+  "fallbackResourceIds": [
+    "Azure Monitor"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

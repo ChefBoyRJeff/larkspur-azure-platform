@@ -1,0 +1,18 @@
+=== M6-06: teardown (workflow run 43752772466), started 11-15-2026 02:30 PM EST as gh-lark-deploy, approved in production ===
+Result: SUCCESS. Times converted from the runner's UTC log to EST.
+
+02:30 PM  === Teardown: rg-lark-app (links in rg-lark-data), 11-15-2026 02:30 PM EST ===
+02:31 PM  deleted link   privatelink.database.windows.net/link-vnet-lark
+02:31 PM  deleted link   privatelink.vaultcore.azure.net/link-vnet-lark
+02:31 PM  deleted        Microsoft.Insights/scheduledqueryrules/alert-lark-api-5xx
+02:32 PM  deleted        Microsoft.App/containerApps/ca-lark-tracking-api
+02:32 PM  deleted        Microsoft.App/jobs/job-lark-dnscheck
+02:32 PM  deleted        Microsoft.App/jobs/job-lark-migrate
+02:58 PM  deleted        Microsoft.App/managedEnvironments/cae-lark
+02:58 PM  deleted        Microsoft.Network/privateEndpoints/pe-lark-kv
+02:59 PM  deleted        Microsoft.Network/privateEndpoints/pe-lark-sql
+03:00 PM  deleted        Microsoft.Network/virtualNetworks/vnet-lark
+03:00 PM  deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-aca
+03:00 PM  deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-pe
+03:00 PM  verified       rg-lark-app is empty
+03:00 PM  verified       rg-lark-app-infra is gone

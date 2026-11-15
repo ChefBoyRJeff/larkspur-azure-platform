@@ -1,0 +1,12 @@
+=== M6-05: deploy with the log search alert (workflow run 43747459553), 11-15-2026 01:34 PM EST, approved in production ===
+Redeployed over the running stack after PR #7 (INC-005). Every step succeeded.
+What-if before deploy: Resource changes: 1 to create, 4 to modify, 10 no change, 14 to ignore.
+  + Microsoft.Insights/scheduledQueryRules/alert-lark-api-5xx; the 4 Modify lines are documented noise (exposedPort, runningStatus, [reference()] identity values, DNS zone group read-only properties)
+migration job-lark-migrate-6kj31k9: Succeeded
+Smoke tests from the internet:
+  GET /healthz -> 200 (expect 200): {"status":"ok"}
+  GET /readyz -> 200 (expect 200): {"ready":true,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.5"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}
+  GET /shipments/LRK100001 -> 200 (expect 200): {"trackingNumber":"LRK100001","origin":"Larkspur HQ","destination":"North Depot","status":"Delivered","lastUpdatedUtc":"2026-11-13T13:51:11Z"}
+  GET /shipments/LRK999999 -> 404 (expect 404): {"detail":"Shipment not found."}
+  GET /shipments/not-a-number -> 400 (expect 400): {"detail":"Tracking numbers look like LRK123456."}
+Idempotency: PASS (no drift after filtering documented what-if noise, with the scheduledQueryRules alert in the stack)

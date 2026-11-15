@@ -1,6 +1,7 @@
 # Larkspur Logistics Azure Platform
 
-> **Status:** in progress. M0–M5 delivered; next is M6 (alerts, a workbook and cost alerts).
+> **Status:** in progress. M0–M6 delivered; next is M7 (backup and recovery: point-in-time restore, Key Vault
+> soft-delete recovery, revision rollback).
 > See [docs/plan.md](docs/plan.md) for the full plan and acceptance criteria.
 
 ## Scenario
@@ -28,7 +29,10 @@ landing zone architecture, and it is not a production system serving real custom
                                └─ pe-lark-kv  10.60.1.4 ──▶ kv-lark-… (East US, purge protection)
 
   rg-lark-data (persistent): SQL server + database, Key Vault, private DNS zones, log-lark (Log Analytics),
-                             managed identities id-lark-tracking-api and id-lark-migrator
+                             managed identities id-lark-tracking-api and id-lark-migrator,
+                             ag-lark-ops (email), SQL free-amount and Resource Health alerts,
+                             Larkspur Operations workbook
+  rg-lark-app alerting:      alert-lark-api-5xx, a log search alert on ContainerAppHTTPLogs (rebuilt every session)
   Image: ghcr.io/chefboyrjeff/larkspur-tracking-api (public GHCR package, built by GitHub Actions)
   Pipeline: GitHub Actions with OIDC (no secrets). Pull requests: validate as gh-lark-plan (read + what-if only).
             deploy / teardown: manual, behind my approval on the "production" environment, as gh-lark-deploy.
@@ -64,8 +68,11 @@ infra/
   budget.bicep                 $5/month budget on both resource groups (subscription scope)
   governance/                  resource groups, policy assignments, group RBAC (subscription scope)
   shared/naming.bicep          globally unique names, shared by both stacks
-  data/                        rg-lark-data: private DNS zones, SQL + database, Key Vault, Log Analytics, identities (persistent)
-  app/                         rg-lark-app: VNet, NSGs, DNS links, private endpoints, Container Apps (rebuilt each session)
+  data/                        rg-lark-data: private DNS zones, SQL + database, Key Vault, Log Analytics, identities,
+                               action group, persistent alerts, workbook (persistent)
+    workbooks/                 Larkspur Operations workbook template (resource IDs are placeholders)
+  app/                         rg-lark-app: VNet, NSGs, DNS links, private endpoints, Container Apps, the API's 5xx
+                               alert (rebuilt each session)
 scripts/
   Remove-LarkAppResources.ps1  end-of-session teardown (run by teardown.yml, or by me locally)
   Initialize-LarkPipeline.ps1  one-time admin setup: custom roles, OIDC app registrations, role assignments
@@ -90,7 +97,8 @@ generated from the committed `*.example.bicepparam` files.
 | M4a Container Apps environment | ✅ Delivered 11-12-2026 | [`docs/evidence/m4a-*`](docs/evidence/) |
 | M4b Shipment-tracking API | ✅ Delivered 11-13-2026 | [`docs/evidence/m4b-*`](docs/evidence/) |
 | M5 Deployment pipeline | ✅ Delivered 11-13-2026 | [`docs/evidence/m5-*`](docs/evidence/), [INC-003](docs/incidents/INC-003-pipeline-deploy-linked-scope-and-pending-delete.md), [INC-004](docs/incidents/INC-004-teardown-false-positive-verification.md) |
-| M6–M9 | Not started | |
+| M6 Observability | ✅ Delivered 11-15-2026 | [`docs/evidence/m6-*`](docs/evidence/), [INC-005](docs/incidents/INC-005-5xx-metric-alert-did-not-fire.md) |
+| M7–M9 | Not started | |
 
 ### M0: Prerequisites
 
@@ -480,6 +488,71 @@ prove the Container Apps managed group is gone (INC-004).
 `validate` checks), a second approver instead of approving my own deploys, and a separate non-production
 environment that deploys automatically on merge.
 
+### M6: Observability
+
+**What I built**
+
+| Alert or view | Signal | Where it lives | Why there |
+|---|---|---|---|
+| `ag-lark-ops` (action group) | Email to me, common alert schema | `rg-lark-data` | Every alert routes here; the address is a `@secure()` parameter from my gitignored local file |
+| `alert-lark-sql-free-amount` | Metric `free_amount_remaining`, Minimum below 10,000 vCore-seconds (Microsoft's recommended 10%), checked hourly | `rg-lark-data` | The free tier pauses the database for the rest of the month when its 100,000 vCore-seconds run out |
+| `alert-lark-data-resource-health` | Activity log: Resource Health, platform-initiated, Degraded or Unavailable | `rg-lark-data` | Azure-side outages of SQL or Key Vault; filtering on PlatformInitiated keeps my own actions and auto-pause from paging me |
+| `alert-lark-api-5xx` | Log search: `ContainerAppHTTPLogs`, `StatusCode >= 500`, 5 or more in 15 minutes, every 5 minutes | `rg-lark-app` (deployed with the app) | It watches a resource that's rebuilt every session |
+| Larkspur Operations workbook | Requests by status class, a 5xx table, app warnings and errors, SQL free amount remaining | `rg-lark-data` | It reads `log-lark`, which keeps 30 days of logs after each teardown |
+| Budget (since M0) | Email at 50% and 100% of actual and 100% of forecast on $5/month | Subscription | Already covered the cost-alert requirement |
+
+**Key decisions**
+
+- **Persistent alerts in the data tier, session alerts in the app stack.** An alert on the API has to be created after
+  the API exists and deleted before teardown can prove the group empty, so the pipeline owns it. The action group is
+  persistent, so both kinds notify the same place.
+- **The 5xx alert is a log search alert, not a metric alert (INC-005).** My first version used the `Requests`
+  metric. In the controlled failure the API returned 10 x HTTP 500 and the metric recorded 2 of at least 15 requests
+  that session, so it never fired. `ContainerAppHTTPLogs`, the ingress's own per-request log, recorded every one.
+- **15-minute window, checked every 5 minutes.** A request's log row is stamped with its start time but only arrives
+  after it finishes; the failing requests took up to 200 seconds.
+- **The workbook is created from code.** I built it in the portal against real session data, but saving it was
+  refused by my M1 policy (`costCenter` tag required, and the workbook Save dialog has no tags field). I exported the
+  Gallery Template JSON, replaced the resource IDs with placeholders, and deploy it from Bicep with the standard tags.
+- **Every data-tier deploy goes through a what-if gate.** It deploys only if the expected resources are the only real
+  changes. Two documented noise patterns there: role assignments whose `principalId` shows as an unresolved
+  `[reference()]` (I proved the principals match before and after), and the action group's `emailAddress`, which
+  what-if can't see because it's a secure value (I compare SHA-256 hashes of the file value and the stored value).
+- **Cost: about $0.** One metric alert time series (the first 10 per month are free); activity log alerts are free;
+  the log search alert is about $1.50/month if it ran all month, but it only exists during sessions; the first 1,000
+  emails per month are free; workbooks are free.
+
+**Controlled failure** (the test that matters: an alert isn't done until it has fired on a real failure)
+
+I changed `Allow-SQL-From-App` on `nsg-lark-pe` from Allow to Deny in the portal, so the API couldn't reach SQL, and
+sent 10 parallel requests. The rule still says "Allow" in its name while it denies, which is what a misconfiguration
+looks like to whoever is on call.
+
+| Run | Result |
+|---|---|
+| 1, metric alert | ❌ 10 x HTTP 500 at 12:59 PM; the alert never fired. Root cause and fix: INC-005 ([`m6-03`](docs/evidence/m6-03-controlled-failure.txt)) |
+| 2, log search alert | ✅ 10 x HTTP 500 at 01:55 PM; **fired at 02:04 PM**; fixed in the portal at 02:12 PM; **resolved at 02:20 PM**; both emails received ([`m6-04`](docs/evidence/m6-04-controlled-failure-log-alert.txt)) |
+
+Detection took 9 minutes after the failing requests finished: the 5-minute check interval, plus log ingestion, plus
+the time the failing requests themselves took.
+
+**Verification** (11-15-2026)
+
+| Check | Result |
+|---|---|
+| Persistent alerting | ✅ 3 resources created; what-if gate passed; Key Vault role assignments proven unchanged ([`m6-01`](docs/evidence/m6-01-persistent-alerts.txt)) |
+| Email path | ✅ "Test action group" email received |
+| SQL free amount metric | ✅ 5 data points in 72 hours, 99,340 → 97,011 vCore-seconds; Azure publishes it only occasionally, so the alert evaluates whenever a data point exists |
+| Deploy with the metric alert | ✅ every step, Idempotency: PASS ([`m6-02`](docs/evidence/m6-02-deploy-session.txt)) |
+| Deploy with the log search alert | ✅ every step, Idempotency: PASS, so the new resource type adds no drift ([`m6-05`](docs/evidence/m6-05-deploy-log-alert.txt)) |
+| Log activation this session | ✅ diagnostic setting created at 12:26 PM, first console row at 12:27 PM (the M5 open question: this time about a minute, not the 90-minute worst case) |
+| Teardown | ✅ the log search alert deleted first; `rg-lark-app` empty; `rg-lark-app-infra` gone ([`m6-06`](docs/evidence/m6-06-teardown.txt)) |
+| Workbook | ✅ created from code with `costCenter`; 6 items, no placeholders left; all 4 data panels load; the portal copy removed ([`m6-07`](docs/evidence/m6-07-workbook.txt)) |
+
+**What I'd do differently in production:** an availability test from outside Azure (it would catch DNS or
+certificate problems that never reach the logs), alert processing rules for maintenance windows, a second
+notification channel besides email, and an investigation of the `Requests` metric gap with Microsoft support.
+
 ## Cost
 
 | Item | Running cost |
@@ -494,6 +567,7 @@ environment that deploys automatically on merge.
 | Managed identities | $0 |
 | Log Analytics | within the free ingestion allowance; 0.1 GB/day cap |
 | Budget alert | $5/month on both resource groups |
+| Alerts and workbook | ~$0: 1 metric time series (10 free), free activity log alert, log search alert only during sessions, free emails and workbook |
 | GitHub Actions | $0 (public repository, GitHub-hosted runners) |
 
 ## Teardown
@@ -506,7 +580,7 @@ runs the same script I can run locally:
 ./scripts/Remove-LarkAppResources.ps1           # delete and verify
 ```
 
-It removes the DNS zone links, then everything inside `rg-lark-app` in dependency order (apps and jobs, environment,
-private endpoints, VNet, NSGs, identities), verifies the group is empty, and waits up to 10 minutes to confirm Azure
-has removed `rg-lark-app-infra`. If it can't check, or the group is still there, it fails instead of reporting
-success (INC-004). `rg-lark-data` stays: it holds the data and logs and costs about $0 when idle.
+It removes the DNS zone links, then everything inside `rg-lark-app` in dependency order (the API's alert rule, apps
+and jobs, environment, private endpoints, VNet, NSGs, identities), verifies the group is empty, and waits up to 10
+minutes to confirm Azure has removed `rg-lark-app-infra`. If it can't check, or the group is still there, it fails
+instead of reporting success (INC-004). `rg-lark-data` stays: it holds the data and logs and costs about $0 when idle.
