@@ -1,0 +1,24 @@
+=== M6-01: persistent alerting in rg-lark-data, 11-15-2026 12:09 PM EST ===
+--- What-if (everything that is not NoChange/Ignore) ---
+  Create   Microsoft.Insights/actionGroups/ag-lark-ops
+  Create   Microsoft.Insights/activityLogAlerts/alert-lark-data-resource-health
+  Create   Microsoft.Insights/metricAlerts/alert-lark-sql-free-amount
+  Modify   Microsoft.Authorization/roleAssignments/<guid>: noise only (properties.principalId Modify; properties.principalType NoEffect) - [reference()] can't be resolved by what-if; NoEffect is Azure's own label
+  Modify   Microsoft.Authorization/roleAssignments/<guid>: noise only (properties.principalId Modify; properties.principalType NoEffect) - [reference()] can't be resolved by what-if; NoEffect is Azure's own label
+  NoChange: 9; Ignore: 1
+--- Role assignments vs identities (before deploy) ---
+  id-lark-tracking-api -> Key Vault Secrets User on the vault: assignments with this exact principal = 1 (expect 1)
+  id-lark-migrator -> Key Vault Secrets Officer on the vault: assignments with this exact principal = 1 (expect 1)
+deploy: Succeeded
+  after deploy: id-lark-tracking-api -> Key Vault Secrets User same assignment, same principal = True (expect True)
+  after deploy: id-lark-migrator -> Key Vault Secrets Officer same assignment, same principal = True (expect True)
+--- Deployed ---
+  ag-lark-ops                       enabled=True emailReceivers=1 receiverStatus=Enabled commonSchema=True
+  alert-lark-sql-free-amount        enabled=True severity=2 every=PT1H window=PT1H rule='free_amount_remaining Minimum LessThan 10000' target=sqldb-lark-tracking
+  alert-lark-data-resource-health   enabled=True scope=rg-lark-data conditions=3
+  free_amount_remaining: no data points in the last 24 hours
+
+--- free_amount_remaining over the last 72 hours (hourly minimum) ---
+  data points: 5; first 11-12-2026 08:16 PM EST = 99340; last 11-15-2026 11:16 AM EST = 97011 vCore-seconds
+  database status now: Online
+  test email from ag-lark-ops (portal: Test action group, Metric alert sample): received

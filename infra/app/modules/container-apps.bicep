@@ -330,6 +330,7 @@ resource dnsCheck 'Microsoft.App/jobs@2024-03-01' = {
 }
 
 output environmentName string = environment.name
+output apiName string = trackingApi.name
 output apiFqdn string = trackingApi.properties.configuration.ingress.fqdn
 output migrateJobName string = migrateJob.name
 output dnsCheckJobName string = dnsCheck.name

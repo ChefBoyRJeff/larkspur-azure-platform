@@ -10,3 +10,4 @@ param tags = {
 }
 param sqlAdminGroupName = 'lark-sql-admins'
 param sqlAdminGroupObjectId = 'replace-with-lark-sql-admins-object-id'
+param alertEmail = 'you@example.com'
