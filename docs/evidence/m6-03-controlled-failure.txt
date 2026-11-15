@@ -1,0 +1,58 @@
+=== M6-03: controlled failure - API can't reach SQL, 11-15-2026 12:56 PM EST ===
+--- Failure injected in the portal: nsg-lark-pe rule Allow-SQL-From-App (priority 100, TCP 10.60.0.0/27 -> port 1433) changed to Deny ---
+--- 10 parallel requests to /shipments/LRK100001, started 11-15-2026 12:56 PM EST ---
+  request  1: HTTP 500 after 200s
+  request  2: HTTP 500 after 200s
+  request  3: HTTP 500 after 200s
+  request  4: HTTP 500 after 200s
+  request  5: HTTP 500 after 200s
+  request  6: HTTP 500 after 200s
+  request  7: HTTP 500 after 200s
+  request  8: HTTP 500 after 200s
+  request  9: HTTP 500 after 200s
+  request 10: HTTP 500 after 200s
+requests finished 11-15-2026 12:59 PM EST
+--- Waiting for alert-lark-api-5xx to fire (checks every minute, up to 15 minutes) ---
+  not fired after 15 minutes (the metric breakdown in the next block will show what Requests recorded)
+
+--- Diagnosis: why alert-lark-api-5xx did not fire ---
+  Requests metric definition: dimensions = revisionName, podName, statusCodeCategory, statusCode; aggregations = Average, Total, Maximum, Minimum
+  Requests recorded in the last hour (only minutes with traffic):
+    statuscode='404' statuscodecategory='4xx' : 12:30 PM EST=1
+    statuscode='200' statuscodecategory='2xx' : 12:30 PM EST=1
+  alert rule: enabled=True target=ca-lark-tracking-api every=PT1M window=PT5M
+  alert rule: Requests Total GreaterThanOrEqual 5 where statusCodeCategory Include [5xx]
+
+--- Diagnosis 2: did the metric miss the requests, or did the split hide them? (last 2 hours) ---
+  Requests, Total, NO dimension split:
+    (all) : 12:30 PM EST=2
+  Requests, Total, split by revisionName:
+    revisionname='ca-lark-tracking-api--0lrwuro' : 12:30 PM EST=2
+  ResponseTime (Average Response Time), Average, split by statusCode:
+    statuscode='200' : 12:30 PM EST=432
+    statuscode='404' : 12:30 PM EST=376
+  Replicas, Maximum:
+    (all) : 12:28 PM EST=1, 12:29 PM EST=1, 12:30 PM EST=1, 12:31 PM EST=1, 12:32 PM EST=1, 12:33 PM EST=1, 12:34 PM EST=1, 12:35 PM EST=1, 12:57 PM EST=1, 12:58 PM EST=1, 12:59 PM EST=1, 01:00 PM EST=1, 01:01 PM EST=1, 01:02 PM EST=1, 01:03 PM EST=1, 01:04 PM EST=1, 01:05 PM EST=1, 01:06 PM EST=1
+  RestartCount, Maximum:
+    (all) : no non-zero points
+
+--- Diagnosis 3: did the logs capture the failures? (rows since the deploy started, 12:21 PM EST) ---
+  ContainerAppSystemLogs: all rows                     rows=48    first=12:26 PM EST last=01:05 PM EST
+  ContainerAppHTTPLogs: all rows (if the table exists) rows=15    first=12:28 PM EST last=12:56 PM EST
+  ContainerAppConsoleLogs: all rows                    rows=1184  first=12:27 PM EST last=01:05 PM EST
+  console: 'SQL connect attempt ... failed' warnings   rows=41    first=12:28 PM EST last=12:59 PM EST
+  console: access-log lines with HTTP 500              rows=10    first=12:59 PM EST last=12:59 PM EST
+  diag-to-log-lark created (deployment operation timestamp): 12:26 PM EST
+
+--- Remediation (portal): Allow-SQL-From-App set back, checked 11-15-2026 01:21 PM EST ---
+  rule now: Allow-SQL-From-App Allow priority 100 TCP 10.60.0.0/27 -> port 1433
+  verification requests:
+    GET /readyz                -> 200 in 94.7s
+    GET /shipments/LRK100001   -> 200 in 0.5s
+    GET /shipments/LRK100002   -> 200 in 0.5s
+    GET /shipments/LRK100003   -> 200 in 0.5s
+    GET /shipments/LRK999999   -> 404 in 0.5s
+--- ContainerAppHTTPLogs schema (column names only) ---
+  TenantId:string, TimeGenerated:datetime, OperationName:string, Location:string, Method:string, Path:string, Authority:string, Protocol:string, UserAgent:string, XForwardedFor:string, StatusCode:int, ResponseCodeDetails:string, ResponseFlags:string, BytesReceived:long, BytesSent:long, RequestDuration:long, StartTime:datetime, RequestId:string, ConnectionId:string, UpstreamHost:string, UpstreamRequestAttemptCount:int, EnvironmentName:string, ContainerAppName:string, RevisionName:string, ReplicaName:string, EnvoyPodName:string, EnvoyContainerId:string, SourceSystem:string, Type:string, _ResourceId:string
+
+--- Fix (INC-005): replaced the metric alert with a log search alert on ContainerAppHTTPLogs; old metric alert deleted from the running stack ---
