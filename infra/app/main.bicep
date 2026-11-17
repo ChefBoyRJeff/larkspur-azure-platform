@@ -139,4 +139,5 @@ output containerAppsEnvironment string = containerApps.outputs.environmentName
 output apiFqdn string = containerApps.outputs.apiFqdn
 output migrateJobName string = containerApps.outputs.migrateJobName
 output dnsCheckJobName string = containerApps.outputs.dnsCheckJobName
+output drillJobName string = containerApps.outputs.drillJobName
 output apiAlertName string = alerts.outputs.apiAlertName

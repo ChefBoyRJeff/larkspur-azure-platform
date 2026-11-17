@@ -55,7 +55,9 @@ jobs:
           set -euo pipefail
           # app-image publishes one tag per commit that changes app/, so the image for the current code is the
           # last commit that touched app/ (infrastructure-only commits don't produce a new image).
-          TAG="${INPUT_TAG:-$(git log -1 --format=%H -- app)}"
+          # --first-parent: app-image runs on main, so the tag is the MERGE commit's SHA. Without it, git log follows
+          # the merged branch and returns the PR's own commit, which was only built (never pushed) on the PR.
+          TAG="${INPUT_TAG:-$(git log -1 --first-parent --format=%H -- app)}"
           token=$(curl -fsS "https://ghcr.io/token?scope=repository:${IMAGE_REPO}:pull" | jq -r .token)
           code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" \
             -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json' \
