@@ -73,7 +73,7 @@ def get_shipment(tracking_number: str):
     settings = load_settings()
     with connect(settings.sql_server, settings.sql_database, settings.client_id) as conn:
         row = conn.cursor().execute(
-            "SELECT TrackingNumber, Origin, Destination, ShipmentStatus AS Status, LastUpdatedUtc FROM dbo.Shipments WHERE TrackingNumber = ?",
+            "SELECT TrackingNumber, Origin, Destination, Status, LastUpdatedUtc FROM dbo.Shipments WHERE TrackingNumber = ?",
             tracking_number,
         ).fetchone()
     if row is None:
