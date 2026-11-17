@@ -1,0 +1,82 @@
+=== M7-03 Drill A: point-in-time restore to a copy, then verify it ===
+incident (INCIDENT line)        2026-11-17T15:44:49.656Z  (11-17-2026 10:44:49 AM EST)
+restore point (UTC)             2026-11-17T15:44:47  (CLI: 'Datetime with no tzinfo will be considered UTC')
+note: my PC rebooted unexpectedly during the first run. Azure finished the restore server-side; a second run
+      then failed with RemoteDatabaseExists and overwrote this file, so the timeline below is from the activity log.
+
+--- restore timeline: activity log for the copy (UTC; the 15-second CLI polling reads are left out) ---
+
+timeUtc               operation                             status
+-------               ---------                             ------
+11/17/2026 4:23:31 PM Microsoft.Sql/servers/databases/write Started
+11/17/2026 4:23:31 PM Microsoft.Sql/servers/databases/write Succeeded
+11/17/2026 4:24:02 PM Microsoft.Sql/servers/databases/write Succeeded
+11/17/2026 4:28:42 PM Microsoft.Sql/servers/databases/write Started
+11/17/2026 4:28:42 PM Microsoft.Sql/servers/databases/write Failed
+
+
+request accepted 16:14:34 UTC (11:14:34 AM EST) -> final write Succeeded 16:24:02 UTC (11:24:02 AM EST): about 9 min 28 s
+
+--- the copy ---
+
+name                             : sqldb-lark-tracking-restore
+status                           : Online
+currentServiceObjectiveName      : GP_S_Gen5_1
+skuCapacity                      : 1
+minCapacity                      : 
+autoPauseDelay                   : 
+zoneRedundant                    : False
+requestedBackupStorageRedundancy : Local
+creationDate                     : 11/17/2026 11:23:30 AM
+
+
+--- copy tags ---
+{
+  "company": "Larkspur Logistics (fictional)",
+  "costCenter": "CC-LARK-01",
+  "environment": "lab",
+  "owner": "platform",
+  "project": "larkspur-azure-platform",
+  "purpose": "m7-restore-drill"
+}
+
+=== drill: compare --target sqldb-lark-tracking-restore ===
+execution      job-lark-drill-xr9vk6p
+started        11-17-2026 11:34:52 AM EST
+status         Succeeded at 11-17-2026 11:35:41 AM EST (checked every 10 seconds)
+--- LARK-DRILL lines (ContainerAppConsoleLogs, times EST; the drill's own UTC stamps are inside the text) ---
+11-17-2026 11:35:19 AM  LARK-DRILL start compare at 2026-11-17T16:35:19.451Z
+11-17-2026 11:35:21 AM  LARK-DRILL live sqldb-lark-tracking: shipments=5 checksum=-85579951 markers=10 newest_marker=2026-11-17T15:35:40.362Z statuses[LOST: drill=5]
+11-17-2026 11:35:21 AM  LARK-DRILL copy sqldb-lark-tracking-restore: shipments=5 checksum=-1817112085 markers=10 newest_marker=2026-11-17T15:35:40.362Z statuses[Delayed: weather=1, Delivered=1, In transit=1, Label created=1, Out for delivery=1]
+11-17-2026 11:35:21 AM  LARK-DRILL shipments match=True checksum match=False
+11-17-2026 11:35:21 AM  LARK-DRILL end compare exit=0
+
+--- supplement (added 11-17-2026): full activity log for the copy, --max-events 500 (the default of 50 cut off the start) ---
+
+timeUtc               operation                                                status
+-------               ---------                                                ------
+11/17/2026 4:04:04 PM Microsoft.Sql/servers/databases/write                    Started
+11/17/2026 4:04:05 PM Microsoft.Authorization/policies/auditIfNotExists/action Started
+11/17/2026 4:04:05 PM Microsoft.Sql/servers/databases/write                    Accepted
+11/17/2026 4:14:34 PM Microsoft.Authorization/policies/audit/action            Succeeded
+11/17/2026 4:14:34 PM Microsoft.Authorization/policies/auditIfNotExists/action Succeeded
+11/17/2026 4:23:31 PM Microsoft.Sql/servers/databases/write                    Started
+11/17/2026 4:23:31 PM Microsoft.Sql/servers/databases/write                    Succeeded
+11/17/2026 4:24:02 PM Microsoft.Sql/servers/databases/write                    Succeeded
+11/17/2026 4:28:42 PM Microsoft.Sql/servers/databases/write                    Started
+11/17/2026 4:28:42 PM Microsoft.Sql/servers/databases/write                    Failed
+11/17/2026 4:40:13 PM Microsoft.Sql/servers/databases/write                    Succeeded
+
+
+--- copy: raw minCapacity and autoPauseDelay ---
+{
+  "autoPauseDelay": null,
+  "minCapacity": null,
+  "sku": {
+    "capacity": 1,
+    "family": "Gen5",
+    "name": "GP_S_Gen5",
+    "size": null,
+    "tier": "GeneralPurpose"
+  }
+}

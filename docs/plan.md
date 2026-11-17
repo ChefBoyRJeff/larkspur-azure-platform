@@ -110,7 +110,7 @@ then an incident report with root cause and prevention.
 | Key Vault, alert rules | Pennies per month |
 | Log Analytics | Within the free ingestion allowance; daily cap set |
 | **Per session estimate** | **< $0.25**; idle month ~$1.50 |
-| M7 one-off | Point-in-time restore creates a paid serverless database (restores can't target the free tier): ~$0.25–$0.50, deleted right after verification |
+| M7 one-off | Point-in-time restore creates a paid serverless database (restores can't target the free tier): $0.63/vCore-hour retail (11-17-2026); the copy existed about 45 minutes, so under $0.50 |
 
 Known risk: Container Apps bills an environment management hour (~$0.10/hr) for environment private endpoints and
 some other features. This design does not use an environment private endpoint. M4 confirms no such charge appears
@@ -159,6 +159,11 @@ in Cost Analysis.
 | M6 | Persistent alerts in rg-lark-data, the API's alert in the app stack | An alert has to be created after the resource it watches and deleted before teardown can prove the group empty |
 | M6 | API 5xx alert is a log search alert on ContainerAppHTTPLogs, not a metric alert (INC-005) | The `Requests` metric recorded 2 of at least 15 requests in the controlled failure; the ingress log recorded all of them |
 | M6 | Workbook built in the portal, deployed from Bicep | The M1 tag policy refused the portal save (no tags field); code adds `costCenter` and keeps it reproducible |
+| M7 | Drills run as `job-lark-drill` (migrator identity) inside the VNet, started by `scripts/Start-LarkDrill.ps1` with a per-execution template override | The database and Key Vault accept no public connections; the override replaces the whole template, so the script copies the job's container and changes only the arguments |
+| M7 | Point-in-time restore to a copy, then repair the live database from it | Azure SQL can't restore over an existing database; a name swap would replace the free-tier database with a paid one and leave the lock on the wrong database |
+| M7 | Restore command copies the live database's tags | Restores don't copy tags, and the `costCenter` policy denies untagged resources |
+| M7 | Rollback = redeploy the last good image tag through `deploy`, not reactivate a revision | In single-revision mode the old revision is deactivated; redeploying keeps `main`, the deployment and the idempotency gate as the source of truth |
+| M7 | `deploy` resolves the default image with `git log --first-parent` | app-image tags the merge commit; without `--first-parent`, git log returns the PR's own commit, which was never pushed |
 
 ## Teardown
 

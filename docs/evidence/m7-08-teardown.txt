@@ -1,0 +1,22 @@
+=== M7-08 teardown after the drills ===
+Source: GitHub Actions teardown run 44141946551 (approved, environment production), read through the GitHub REST API. Times UTC [EST = UTC-5].
+
+2026-11-17T17:54:14Z === Teardown: rg-lark-app (links in rg-lark-data), 11-17-2026 12:54 PM EST ===
+2026-11-17T17:54:54Z deleted link   privatelink.database.windows.net/link-vnet-lark
+2026-11-17T17:55:27Z deleted link   privatelink.vaultcore.azure.net/link-vnet-lark
+2026-11-17T17:55:30Z deleted        Microsoft.Insights/scheduledqueryrules/alert-lark-api-5xx
+2026-11-17T17:55:47Z deleted        Microsoft.App/containerApps/ca-lark-tracking-api
+2026-11-17T17:56:03Z deleted        Microsoft.App/jobs/job-lark-dnscheck
+2026-11-17T17:56:20Z deleted        Microsoft.App/jobs/job-lark-drill
+2026-11-17T17:56:36Z deleted        Microsoft.App/jobs/job-lark-migrate
+2026-11-17T18:20:29Z deleted        Microsoft.App/managedEnvironments/cae-lark
+2026-11-17T18:21:02Z deleted        Microsoft.Network/privateEndpoints/pe-lark-kv
+2026-11-17T18:21:36Z deleted        Microsoft.Network/privateEndpoints/pe-lark-sql
+2026-11-17T18:21:49Z deleted        Microsoft.Network/virtualNetworks/vnet-lark
+2026-11-17T18:21:52Z deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-aca
+2026-11-17T18:21:55Z deleted        Microsoft.Network/networkSecurityGroups/nsg-lark-pe
+2026-11-17T18:21:56Z verified       rg-lark-app is empty
+2026-11-17T18:21:58Z verified       rg-lark-app-infra is gone
+
+Run conclusion: success at 2026-11-17T18:22:03Z [01:22:03 PM]
+Duration: 28 min (12:53:42 PM -> 01:22:03 PM EST); deleting cae-lark took 23 min 53 s (17:56:36Z -> 18:20:29Z).

@@ -1,0 +1,13 @@
+=== M7-04 Drill A: repair the live database from the verified copy ===
+=== drill: repair --source sqldb-lark-tracking-restore --confirm ===
+execution      job-lark-drill-kez9muh
+started        11-17-2026 11:45:22 AM EST
+status         Succeeded at 11-17-2026 11:46:22 AM EST (checked every 10 seconds)
+--- LARK-DRILL lines (ContainerAppConsoleLogs, times EST; the drill's own UTC stamps are inside the text) ---
+11-17-2026 11:46:09 AM  LARK-DRILL start repair at 2026-11-17T16:46:09.363Z
+11-17-2026 11:46:11 AM  LARK-DRILL repaired 5 of 5 shipments from sqldb-lark-tracking-restore at 2026-11-17T16:46:11.644Z
+11-17-2026 11:46:11 AM  LARK-DRILL after: sqldb-lark-tracking: shipments=5 checksum=-1817112085 markers=10 newest_marker=2026-11-17T15:35:40.362Z statuses[Delayed: weather=1, Delivered=1, In transit=1, Label created=1, Out for delivery=1]
+11-17-2026 11:46:11 AM  LARK-DRILL end repair exit=0
+
+--- customer view: GET /shipments/LRK100001 at 11-17-2026 11:52:42 AM EST ---
+{"trackingNumber":"LRK100001","origin":"Larkspur HQ","destination":"North Depot","status":"Delivered","lastUpdatedUtc":"2026-11-13T13:51:11Z"}
