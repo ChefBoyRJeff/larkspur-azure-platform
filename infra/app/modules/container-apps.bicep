@@ -293,6 +293,61 @@ resource migrateJob 'Microsoft.App/jobs@2024-03-01' = {
   }
 }
 
+// M7 recovery drills (python -m larkspur.drill). Same image and identity as the migration job: the migrator is in
+// lark-sql-admins (so it can read a restored copy of the database) and is Key Vault Secrets Officer (so it can delete
+// and recover the carrier secret). The default args are the harmless read-only check; each drill passes its own
+// command with scripts/Start-LarkDrill.ps1, which starts one execution with an execution template override.
+resource drillJob 'Microsoft.App/jobs@2024-03-01' = {
+  name: 'job-lark-drill'
+  location: location
+  tags: tags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${migratorIdentity.id}': {}
+    }
+  }
+  properties: {
+    environmentId: environment.id
+    workloadProfileName: 'Consumption'
+    configuration: {
+      triggerType: 'Manual'
+      replicaTimeout: 900
+      replicaRetryLimit: 0
+      manualTriggerConfig: {
+        parallelism: 1
+        replicaCompletionCount: 1
+      }
+    }
+    template: {
+      containers: [
+        {
+          name: 'drill'
+          image: containerImage
+          command: [
+            'python'
+            '-m'
+            'larkspur.drill'
+          ]
+          args: [
+            'secret-check'
+          ]
+          env: concat(commonEnv, [
+            {
+              name: 'AZURE_CLIENT_ID'
+              value: migratorIdentity.properties.clientId
+            }
+          ])
+          resources: {
+            cpu: json('0.5')
+            memory: '1Gi'
+          }
+        }
+      ]
+    }
+  }
+}
+
 resource dnsCheck 'Microsoft.App/jobs@2024-03-01' = {
   name: 'job-lark-dnscheck'
   location: location
@@ -334,3 +389,4 @@ output apiName string = trackingApi.name
 output apiFqdn string = trackingApi.properties.configuration.ingress.fqdn
 output migrateJobName string = migrateJob.name
 output dnsCheckJobName string = dnsCheck.name
+output drillJobName string = drillJob.name
