@@ -1,0 +1,31 @@
+=== M7-06 Drill B: carrier secret deleted, then recovered from Key Vault soft delete, 11-17-2026 12:10 PM EST ===
+baseline (m7-01): version 2a0560b2..., fingerprint cb12431e0d99
+
+=== drill: secret-delete --confirm ===
+execution      job-lark-drill-4194t3d
+started        11-17-2026 12:10:06 PM EST
+status         Succeeded at 11-17-2026 12:11:07 PM EST (checked every 10 seconds)
+--- LARK-DRILL lines (ContainerAppConsoleLogs, times EST; the drill's own UTC stamps are inside the text) ---
+11-17-2026 12:10:50 PM  LARK-DRILL start secret-delete at 2026-11-17T17:10:50.917Z
+11-17-2026 12:10:52 PM  LARK-DRILL secret carrier-api-key: present version=2a0560b2... fingerprint=cb12431e0d99
+11-17-2026 12:10:54 PM  LARK-DRILL secret carrier-api-key DELETED at 2026-11-17T17:10:54.860Z
+11-17-2026 12:10:55 PM  LARK-DRILL secret carrier-api-key: NOT FOUND
+11-17-2026 12:10:55 PM  LARK-DRILL   soft-deleted at 2026-11-17T17:10:52+00:00; scheduled purge 2026-11-24T17:10:52+00:00
+11-17-2026 12:10:55 PM  LARK-DRILL end secret-delete exit=0
+
+--- impact while the secret is deleted ---
+GET /readyz at 11-17-2026 12:21:33 PM EST -> HTTP 503: {"ready":false,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.4"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":false,"error":"ResourceNotFoundError","detail":"(SecretNotFound) A secret with (name/id) carrier-api-key was not found in this key vault. If you recently deleted this secret you may be able to recover it using the correct recovery command. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125182\nCode: SecretNotFou"}}}
+GET /shipments/LRK100001 at 11-17-2026 12:23:36 PM EST -> HTTP 200: {"trackingNumber":"LRK100001","origin":"Larkspur HQ","destination":"North Depot","status":"Delivered","lastUpdatedUtc":"2026-11-13T13:51:11Z"}
+
+=== drill: secret-recover ===
+execution      job-lark-drill-bjy1yrg
+started        11-17-2026 12:23:40 PM EST
+status         Succeeded at 11-17-2026 12:24:41 PM EST (checked every 10 seconds)
+--- LARK-DRILL lines (ContainerAppConsoleLogs, times EST; the drill's own UTC stamps are inside the text) ---
+11-17-2026 12:24:24 PM  LARK-DRILL start secret-recover at 2026-11-17T17:24:24.401Z
+11-17-2026 12:24:30 PM  LARK-DRILL secret carrier-api-key RECOVERED at 2026-11-17T17:24:30.116Z
+11-17-2026 12:24:30 PM  LARK-DRILL secret carrier-api-key: present version=2a0560b2... fingerprint=cb12431e0d99
+11-17-2026 12:24:30 PM  LARK-DRILL end secret-recover exit=0
+
+--- after recovery ---
+GET /readyz at 11-17-2026 12:28:54 PM EST -> HTTP 200: {"ready":true,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.4"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}}}

@@ -1,0 +1,46 @@
+=== M7-07 Drill C: bad release caught by the smoke tests, rolled back to the last good image ===
+Source: GitHub Actions run logs (deploy runs 44139000114 and 44139993894), read through the GitHub REST API.
+Times are UTC from the runner log, with EST (UTC-5) in brackets. Nothing below is simulated.
+
+--- the bad change (PR #10, merged 2026-11-17T17:34:16Z [12:34:16 PM]) ---
+app/larkspur/main.py, the shipment query:
+-  "SELECT TrackingNumber, Origin, Destination, Status, LastUpdatedUtc FROM dbo.Shipments WHERE TrackingNumber = ?"
++  "SELECT TrackingNumber, Origin, Destination, ShipmentStatus AS Status, LastUpdatedUtc FROM dbo.Shipments WHERE TrackingNumber = ?"
+PR #10 app-image check: success (unit tests don't touch SQL)
+app-image on main: 12 passed; pushed :9ea5f719eed409685e1b9ad84b8f528ae5b7f068 at 17:35:17Z [12:35:17 PM]
+
+--- C2: deploy run 44139000114 (image_tag empty -> last first-parent commit that changed app/) ---
+2026-11-17T17:37:32Z   LARK_IMAGE: ghcr.io/chefboyrjeff/larkspur-tracking-api:9ea5f719eed409685e1b9ad84b8f528ae5b7f068
+2026-11-17T17:40:37Z   What-if, deploy: Succeeded                     [12:40:37 PM]  bad revision serving traffic
+2026-11-17T17:41:25Z   migration job-lark-migrate-h25w8zt: Succeeded
+2026-11-17T17:41:28Z   GET /healthz -> 200 (expect 200): {"status":"ok"}
+2026-11-17T17:41:32Z   GET /readyz -> 200 (expect 200): {"ready":true,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.4"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}}}
+2026-11-17T17:41:32Z   GET /shipments/LRK100001 -> 500 (expect 200): Internal Server Error   [12:41:32 PM]  DETECTED
+2026-11-17T17:41:32Z   ##[error]Process completed with exit code 1.
+Run conclusion: failure (Smoke tests from the internet); Idempotency skipped.
+
+--- C3: rollback, deploy run 44139993894 (image_tag = cd7cde6ad83f8eff2af2d1ac9cefdd5f25677a95, the last good image) ---
+2026-11-17T17:42:53Z   run created                                    [12:42:53 PM]
+2026-11-17T17:43:11Z   LARK_IMAGE: ghcr.io/chefboyrjeff/larkspur-tracking-api:cd7cde6ad83f8eff2af2d1ac9cefdd5f25677a95
+2026-11-17T17:45:20Z   What-if, deploy: Succeeded                     [12:45:20 PM]  good revision serving traffic
+2026-11-17T17:46:36Z   migration job-lark-migrate-jqvyioe: Succeeded
+2026-11-17T17:46:38Z   GET /healthz -> 200 (expect 200): {"status":"ok"}
+2026-11-17T17:46:43Z   GET /readyz -> 200 (expect 200): {"ready":true,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.4"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}}}
+2026-11-17T17:46:44Z   GET /shipments/LRK100001 -> 200 (expect 200): {"trackingNumber":"LRK100001","origin":"Larkspur HQ","destination":"North Depot","status":"Delivered","lastUpdatedUtc":"2026-11-13T13:51:11Z"}
+2026-11-17T17:46:44Z   GET /shipments/LRK999999 -> 404 (expect 404): {"detail":"Shipment not found."}
+2026-11-17T17:46:44Z   GET /shipments/not-a-number -> 400 (expect 400): {"detail":"Tracking numbers look like LRK123456."}
+2026-11-17T17:47:04Z   Idempotency (what-if after deploy, known noise filtered): success
+Run conclusion: success
+
+--- C4: revert on main ---
+PR #11 "M7 Drill C: revert the bad release" merged 2026-11-17T17:55:26Z [12:55:26 PM], merge commit 15df5aa
+app-image on main for 15df5aa: success at 17:56:25Z (image with the restored query; the next default deploy uses it)
+
+--- Drill C results (derived from the lines above) ---
+bad revision live (deploy step done)          12:40:37 PM
+detected by the smoke test                    12:41:32 PM   55 s after going live
+rollback started                              12:42:53 PM   1 min 21 s to decide and start
+good revision serving                         12:45:20 PM
+bad release live                              4 min 43 s    (12:40:37 -> 12:45:20 PM)
+until proven healthy by smoke tests           6 min 07 s    (12:40:37 -> 12:46:44 PM)
+caught by: end-to-end smoke test only (PR checks, /healthz and /readyz were all green)

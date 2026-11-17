@@ -1,7 +1,6 @@
 # Larkspur Logistics Azure Platform
 
-> **Status:** in progress. M0–M6 delivered; next is M7 (backup and recovery: point-in-time restore, Key Vault
-> soft-delete recovery, revision rollback).
+> **Status:** in progress. M0–M7 delivered; next is M8 (operational incidents).
 > See [docs/plan.md](docs/plan.md) for the full plan and acceptance criteria.
 
 ## Scenario
@@ -23,7 +22,8 @@ landing zone architecture, and it is not a production system serving real custom
                           ├─ snet-aca 10.60.0.0/27   cae-lark (Container Apps, Consumption, external)
                           │                          ├─ ca-lark-tracking-api  API, identity id-lark-tracking-api
                           │                          ├─ job-lark-migrate      schema/seed/app user/secret, identity id-lark-migrator
-                          │                          └─ job-lark-dnscheck     resolves the data tier from inside the VNet
+                          │                          ├─ job-lark-dnscheck     resolves the data tier from inside the VNet
+                          │                          └─ job-lark-drill        M7 recovery drills, identity id-lark-migrator
                           └─ snet-pe  10.60.1.0/27   NSG: only snet-aca → 1433 / 443
                                ├─ pe-lark-sql 10.60.1.5 ──▶ sql-lark-… (Central US) ─ sqldb-lark-tracking (free tier, locked)
                                └─ pe-lark-kv  10.60.1.4 ──▶ kv-lark-… (East US, purge protection)
@@ -55,7 +55,8 @@ landing zone architecture, and it is not a production system serving real custom
 
 ```
 app/
-  larkspur/                    FastAPI shipment-tracking API + migration entry point (python -m larkspur.migrate)
+  larkspur/                    FastAPI shipment-tracking API, migration (python -m larkspur.migrate) and recovery
+                               drills (python -m larkspur.drill)
   tests/                       unit tests (run in CI without Azure)
   Dockerfile                   Python 3.12 slim + ODBC Driver 18, non-root
 .github/workflows/
@@ -77,6 +78,7 @@ scripts/
   Remove-LarkAppResources.ps1  end-of-session teardown (run by teardown.yml, or by me locally)
   Initialize-LarkPipeline.ps1  one-time admin setup: custom roles, OIDC app registrations, role assignments
   whatif-drift.jq              idempotency filter: removes documented what-if noise, fails on anything else
+  Start-LarkDrill.ps1          runs one recovery drill command in job-lark-drill and reads its log lines back
 docs/
   plan.md                      plan, milestones, acceptance criteria, design changes
   incidents/                   incident reports (root cause, remediation, prevention)
@@ -98,7 +100,8 @@ generated from the committed `*.example.bicepparam` files.
 | M4b Shipment-tracking API | ✅ Delivered 11-13-2026 | [`docs/evidence/m4b-*`](docs/evidence/) |
 | M5 Deployment pipeline | ✅ Delivered 11-13-2026 | [`docs/evidence/m5-*`](docs/evidence/), [INC-003](docs/incidents/INC-003-pipeline-deploy-linked-scope-and-pending-delete.md), [INC-004](docs/incidents/INC-004-teardown-false-positive-verification.md) |
 | M6 Observability | ✅ Delivered 11-15-2026 | [`docs/evidence/m6-*`](docs/evidence/), [INC-005](docs/incidents/INC-005-5xx-metric-alert-did-not-fire.md) |
-| M7–M9 | Not started | |
+| M7 Backup and recovery | ✅ Delivered 11-17-2026 | [`docs/evidence/m7-*`](docs/evidence/) |
+| M8–M9 | Not started | |
 
 ### M0: Prerequisites
 
@@ -553,6 +556,120 @@ the time the failing requests themselves took.
 certificate problems that never reach the logs), alert processing rules for maintenance windows, a second
 notification channel besides email, and an investigation of the `Requests` metric gap with Microsoft support.
 
+### M7: Backup and recovery
+
+**What I built**
+
+- `app/larkspur/drill.py`: recovery drill commands that run inside the VNet, because the database and Key Vault
+  accept no public connections. `mark` writes timestamped rows (simulated activity), `corrupt` is the simulated
+  incident, `snapshot` and `compare` summarize databases (row count, checksum, statuses, newest marker), `repair`
+  copies good values back from a restored copy, and `secret-delete` / `secret-recover` / `secret-check` drill Key
+  Vault. Destructive commands need `--confirm`, database names must match `sqldb-lark-tracking…`, `repair` refuses
+  the live database as its source, and the secret's value is never printed (only a 12-character SHA-256
+  fingerprint). 7 unit tests cover those guards.
+- `job-lark-drill` in `infra/app/modules/container-apps.bicep`: a manual Container Apps job with the migrator's
+  identity (a `lark-sql-admins` member, so it can open a restored copy; Key Vault Secrets Officer, so it can delete
+  and recover the secret). Its default command is the read-only `secret-check`.
+- `scripts/Start-LarkDrill.ps1`: runs one drill command and prints its log lines. The Jobs Start API accepts an
+  execution template, but an override **replaces the whole template**, so the script reads the job's current
+  container (image, command, env, resources), changes only the arguments, starts one execution, waits for it, and
+  reads its `LARK-DRILL` lines from `ContainerAppConsoleLogs`. The job's saved configuration never changes.
+
+**Drill A: corrupted data, point-in-time restore** ([`m7-01`](docs/evidence/m7-01-baseline.txt) to
+[`m7-05`](docs/evidence/m7-05-drill-a-results.txt))
+
+| Time (EST, 11-17-2026) | Event |
+|---|---|
+| 09:56 AM | Baseline: 5 shipments, checksum -1817112085 |
+| 10:31–10:35 AM | 10 marker rows written 20 s apart (the first one 72 s after the job started: the free database waking from auto-pause) |
+| 10:44:47 AM | `start corrupt`, the last known good moment, chosen as the restore point |
+| 10:44:49 AM | **Incident:** every shipment's status overwritten; customers saw `"status":"LOST: drill"` |
+| 11:04:04 AM | Point-in-time restore requested to a new database, `sqldb-lark-tracking-restore` |
+| 11:24:02 AM | Restore complete (19 min 58 s) |
+| 11:35:21 AM | `compare`: the copy matched the baseline checksum, with all 10 markers |
+| 11:46:11 AM | `repair`: 5 of 5 shipments fixed in 2.3 s; live checksum back to -1817112085 |
+| 12:08:44 PM | Copy deleted; the live database's `CanNotDelete` lock still in place |
+
+| Measure | Result |
+|---|---|
+| RPO (data lost) | **0 rows.** All 10 markers were in the copy; the restore point was 2 s before the bad update |
+| RTO (incident to repaired) | **61 min 22 s:** 19 min 15 s before the restore started (waiting for log lines and a log backup to cover the restore point), 19 min 58 s of restore, 22 min 09 s from restore to repair |
+
+- **Restore to a copy, then copy the data back.** Azure SQL can't restore over an existing database, and swapping
+  names would have replaced my free-tier database with a paid one and left the delete lock on the wrong database.
+  Copying back only the damaged values is Microsoft's documented data-recovery pattern.
+- **The restored copy** was General Purpose serverless, 1 vCore maximum, local backup redundancy, zone redundancy
+  off ($0.63/vCore-hour retail in Central US, checked 11-17-2026); restores can't target the free offer.
+- **Restores don't copy tags**, and my `costCenter` policy would deny an untagged database, so the restore command
+  copied the live database's tags and added `purpose=m7-restore-drill`.
+- **Only about 20 of the 61 minutes were Azure.** The rest was process: 8-minute log latency on every drill step,
+  waiting for a log backup, verification, and an unexpected PC reboot during the restore. Azure finished the restore
+  server-side; my re-run then failed with `RemoteDatabaseExists` and overwrote the evidence file, so I rebuilt the
+  timeline from the activity log.
+- **Correction I made:** `az monitor activity-log list` returns 50 events by default. My first reading of the
+  timeline started at the policy audit (11:14:34 AM) and put the restore at about 9.5 minutes; with
+  `--max-events 500` the real request was 11:04:04 AM, so the restore took 19 min 58 s.
+- **Observed, not explained:** the copy reported `minCapacity` and `autoPauseDelay` as null even though the restore
+  passed `--min-capacity 0.5 --auto-pause-delay 60`, and the activity log shows one more successful write on the
+  copy at 11:40:13 AM that I can't attribute to anything I ran.
+
+**Drill B: deleted secret, soft-delete recovery** ([`m7-06`](docs/evidence/m7-06-drill-b.txt))
+
+| Time (EST) | Event |
+|---|---|
+| 12:10:54 PM | `carrier-api-key` deleted (version `2a0560b2…`, fingerprint `cb12431e0d99`); scheduled purge 11-24-2026 |
+| 12:21:33 PM | `/readyz` → **503** (`SecretNotFound`); SQL and DNS still healthy |
+| 12:23:36 PM | `/shipments/LRK100001` → **200**: customer lookups don't use the secret |
+| 12:24:30 PM | Recovered in 5.7 s: **same version, same fingerprint** |
+| 12:28:54 PM | `/readyz` → 200 |
+
+The readiness probe hits `/healthz`, not `/readyz` (an M4b decision). If it probed `/readyz`, this incident would
+have taken the only replica out of service and broken shipment lookups that never needed the secret.
+
+**Drill C: bad release, rollback** ([`m7-07`](docs/evidence/m7-07-drill-c.txt))
+
+I merged a deliberately bad change (PR #10): the shipment query read `ShipmentStatus`, a column that doesn't exist.
+`/healthz` and `/readyz` don't touch that query and the unit tests don't touch SQL, so the PR was green.
+
+| Time (EST) | Event |
+|---|---|
+| 12:40:37 PM | Deploy finished: the bad revision is serving customers |
+| 12:41:32 PM | **Smoke test failed:** `/shipments/LRK100001` → 500; deploy stopped before idempotency (55 s after going live) |
+| 12:42:53 PM | Rollback started: deploy with `image_tag` = `cd7cde6…`, the last good image |
+| 12:45:20 PM | Good revision serving |
+| 12:46:44 PM | Smoke tests pass; idempotency passed at 12:47:04 PM |
+| 12:55:26 PM | PR #11 reverts the bad commit on `main` |
+
+The bad release was live for **4 min 43 s**. With `activeRevisionsMode: Single`, a new revision takes all traffic
+as soon as it's deployed, so the smoke test caught the problem after customers could already see it. I rolled back by
+redeploying the last good image through the pipeline instead of reactivating the old revision, so the code in `main`,
+the deployment and the idempotency check stayed the source of truth.
+
+**Found along the way: a latent deploy bug.** `deploy.yml` found its image tag with `git log -1 -- app`. After a
+pull request merge, that returns the branch's own commit, but app-image tags the image with the **merge commit's**
+SHA, so deploy would have looked for an image that was never pushed. It had never fired because my only earlier
+image didn't come through a PR merge. I proved it in a scratch repository and added `--first-parent`; the first
+deploy after PR #9 resolved the merge commit `cd7cde6`. That same run also started 30 seconds before app-image finished
+pushing, and the image check stopped it before anything touched Azure, which is why that check runs first.
+
+**Verification** (11-17-2026)
+
+| Check | Result |
+|---|---|
+| PR #9 checks | ✅ validate (what-if: `+ job-lark-drill`; guardrail refused) and app-image (12 tests) |
+| Deploy with the drill job | ✅ every step, Idempotency: PASS |
+| Drill A | ✅ copy identical to the baseline; live database repaired; RPO 0 rows; RTO 61 min 22 s |
+| Drill B | ✅ same secret version and fingerprint after recovery; `/readyz` 503 → 200 |
+| Drill C | ✅ smoke tests caught the bad release; rollback passed smoke tests and idempotency; `main` reverted |
+| Restored copy | ✅ deleted; only `master` and `sqldb-lark-tracking` left; lock still in place |
+| Teardown | ✅ `job-lark-drill` and the rest of the stack deleted; `rg-lark-app` empty; `rg-lark-app-infra` gone ([`m7-08`](docs/evidence/m7-08-teardown.txt)) |
+
+**What I'd do differently in production:** multiple-revision mode with a traffic split, so a new revision is
+smoke-tested through its own URL at 0% traffic before it serves anyone; geo-redundant backups (mine are locally
+redundant, so geo-restore isn't available); a recovery runbook with pre-built commands to cut the process time out of
+the RTO; and unit tests that run the API's SQL against a real database, which would have caught Drill C's bug at the
+pull request.
+
 ## Cost
 
 | Item | Running cost |
@@ -569,6 +686,7 @@ notification channel besides email, and an investigation of the `Requests` metri
 | Budget alert | $5/month on both resource groups |
 | Alerts and workbook | ~$0: 1 metric time series (10 free), free activity log alert, log search alert only during sessions, free emails and workbook |
 | GitHub Actions | $0 (public repository, GitHub-hosted runners) |
+| M7 restored database copy (one-off) | GP serverless at $0.63/vCore-hour (retail, Central US, 11-17-2026); existed about 45 minutes, so under $0.50 |
 
 ## Teardown
 

@@ -1,0 +1,33 @@
+=== M7-02 Drill A: activity, then the incident, 11-17-2026 10:30 AM EST ===
+=== drill: mark --count 10 --interval 20 ===
+execution      job-lark-drill-v2djkj0
+started        11-17-2026 10:30:40 AM EST
+status         Succeeded at 11-17-2026 10:35:51 AM EST (checked every 10 seconds)
+--- LARK-DRILL lines (ContainerAppConsoleLogs, times EST; the drill's own UTC stamps are inside the text) ---
+11-17-2026 10:31:27 AM  LARK-DRILL start mark at 2026-11-17T15:31:27.958Z
+11-17-2026 10:32:39 AM  LARK-DRILL marker 1/10 written at 2026-11-17T15:32:39.831Z
+11-17-2026 10:32:59 AM  LARK-DRILL marker 2/10 written at 2026-11-17T15:32:59.900Z
+11-17-2026 10:33:19 AM  LARK-DRILL marker 3/10 written at 2026-11-17T15:33:19.968Z
+11-17-2026 10:33:40 AM  LARK-DRILL marker 4/10 written at 2026-11-17T15:33:40.035Z
+11-17-2026 10:34:00 AM  LARK-DRILL marker 5/10 written at 2026-11-17T15:34:00.100Z
+11-17-2026 10:34:20 AM  LARK-DRILL marker 6/10 written at 2026-11-17T15:34:20.164Z
+11-17-2026 10:34:40 AM  LARK-DRILL marker 7/10 written at 2026-11-17T15:34:40.233Z
+11-17-2026 10:35:00 AM  LARK-DRILL marker 8/10 written at 2026-11-17T15:35:00.292Z
+11-17-2026 10:35:20 AM  LARK-DRILL marker 9/10 written at 2026-11-17T15:35:20.353Z
+11-17-2026 10:35:40 AM  LARK-DRILL marker 10/10 written at 2026-11-17T15:35:40.414Z
+11-17-2026 10:35:40 AM  LARK-DRILL end mark exit=0
+
+=== drill: corrupt --confirm ===
+execution      job-lark-drill-6kllsj5
+started        11-17-2026 10:44:19 AM EST
+status         Succeeded at 11-17-2026 10:45:07 AM EST (checked every 10 seconds)
+--- LARK-DRILL lines (ContainerAppConsoleLogs, times EST; the drill's own UTC stamps are inside the text) ---
+11-17-2026 10:44:47 AM  LARK-DRILL start corrupt at 2026-11-17T15:44:47.832Z
+11-17-2026 10:44:49 AM  LARK-DRILL before: sqldb-lark-tracking: shipments=5 checksum=-1817112085 markers=10 newest_marker=2026-11-17T15:35:40.362Z statuses[Delayed: weather=1, Delivered=1, In transit=1, Label created=1, Out for delivery=1]
+11-17-2026 10:44:49 AM  LARK-DRILL INCIDENT at 2026-11-17T15:44:49.656Z: overwrote Status on 5 shipments with 'LOST: drill'
+11-17-2026 10:44:49 AM  LARK-DRILL after: sqldb-lark-tracking: shipments=5 checksum=-85579951 markers=10 newest_marker=2026-11-17T15:35:40.362Z statuses[LOST: drill=5]
+11-17-2026 10:44:49 AM  LARK-DRILL end corrupt exit=0
+
+WARNING: The behavior of this command has been altered by the following extension: containerapp
+--- customer view: GET /shipments/LRK100001 at 11-17-2026 10:45:46 AM EST ---
+{"trackingNumber":"LRK100001","origin":"Larkspur HQ","destination":"North Depot","status":"LOST: drill","lastUpdatedUtc":"2026-11-13T13:51:11Z"}

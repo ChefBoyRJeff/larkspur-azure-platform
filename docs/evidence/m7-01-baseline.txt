@@ -1,0 +1,18 @@
+=== M7-01 baseline before the drills, 11-17-2026 09:55 AM EST (deploy run attempt 2, image cd7cde6) ===
+=== drill: snapshot ===
+execution      job-lark-drill-tx4a0o2
+started        11-17-2026 09:56:02 AM EST
+status         Succeeded at 11-17-2026 09:57:01 AM EST (checked every 10 seconds)
+--- LARK-DRILL lines (ContainerAppConsoleLogs, times EST; the drill's own UTC stamps are inside the text) ---
+11-17-2026 09:56:46 AM  LARK-DRILL start snapshot at 2026-11-17T14:56:46.864Z
+11-17-2026 09:56:48 AM  LARK-DRILL sqldb-lark-tracking: shipments=5 checksum=-1817112085 markers=0 newest_marker=None statuses[Delayed: weather=1, Delivered=1, In transit=1, Label created=1, Out for delivery=1]
+11-17-2026 09:56:48 AM  LARK-DRILL end snapshot exit=0
+
+=== drill: secret-check ===
+execution      job-lark-drill-uzfd2u6
+started        11-17-2026 10:05:33 AM EST
+status         Succeeded at 11-17-2026 10:06:33 AM EST (checked every 10 seconds)
+--- LARK-DRILL lines (ContainerAppConsoleLogs, times EST; the drill's own UTC stamps are inside the text) ---
+11-17-2026 10:06:18 AM  LARK-DRILL start secret-check at 2026-11-17T15:06:18.585Z
+11-17-2026 10:06:19 AM  LARK-DRILL secret carrier-api-key: present version=2a0560b2... fingerprint=cb12431e0d99
+11-17-2026 10:06:19 AM  LARK-DRILL end secret-check exit=0

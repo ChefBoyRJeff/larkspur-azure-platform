@@ -1,0 +1,27 @@
+=== M7-05 Drill A: delete the restored copy and record the results ===
+delete requested   11-17-2026 12:08:26 PM EST
+delete exit 0 at 11-17-2026 12:08:44 PM EST
+--- databases left on the server ---
+Name                 Sku          Status
+-------------------  -----------  --------
+master               GP_SYSTEM_4  Online
+sqldb-lark-tracking  GP_S_Gen5_2  Online
+--- locks in rg-lark-data (the live database's lock must still be there) ---
+Name                      Level
+------------------------  ------------
+lock-sqldb-lark-tracking  CanNotDelete
+
+--- Drill A results (derived from m7-02, m7-03 and m7-04; times EST, 11-17-2026) ---
+incident (bad update committed)       10:44:49 AM   (2026-11-17T15:44:49.656Z)
+restore point chosen                  10:44:47 AM   (start corrupt, 2 s before the incident)
+restore requested                     11:04:04 AM   (activity log: databases/write Started 16:04:04 UTC)
+restore complete                      11:24:02 AM   (19 min 58 s)
+copy verified (compare)               11:35:21 AM   (checksum -1817112085, 10 markers)
+repair complete                       11:46:11 AM   (2026-11-17T16:46:11.644Z; repair itself 2.3 s)
+RTO, incident to repair               61 min 22 s
+  before the restore started          19 min 15 s   (logs reaching Log Analytics, log backup, decision)
+  the restore                         19 min 58 s
+  restore to repair                   22 min 09 s   (unexpected PC reboot, duplicate run, verification with 8-min log latency)
+RPO                                   0 rows lost (10 of 10 markers in the copy; nothing written between the restore point and the incident)
+observed, not explained: the copy reported minCapacity and autoPauseDelay as null despite --min-capacity 0.5 --auto-pause-delay 60;
+                         an extra databases/write Succeeded on the copy at 16:40:13 UTC
