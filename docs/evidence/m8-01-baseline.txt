@@ -1,0 +1,61 @@
+=== M8-01 baseline before the incidents, 11-17-2026 02:15 PM EST (deploy run 44149021193, image 15df5aa) ===
+--- private DNS zones: VNet links and A records ---
+
+zone                             name           virtualNetworkLinkState provision
+                                                                        ingState
+----                             ----           ----------------------- ---------
+privatelink.database.windows.net link-vnet-lark Completed               Succeeded
+
+
+
+record     ipv4
+------     ----
+sql-lark-… 10.60.1.5
+
+
+
+zone                            name           virtualNetworkLinkState provisioni
+                                                                       ngState
+----                            ----           ----------------------- ----------
+privatelink.vaultcore.azure.net link-vnet-lark Completed               Succeeded 
+
+
+
+record    ipv4
+------    ----
+kv-lark-… 10.60.1.4
+
+
+--- id-lark-tracking-api: role assignments (all scopes) ---
+
+roleDefinitionName     scope
+------------------     -----
+Key Vault Secrets User /subscriptions/<sub>/resourcegroups/rg-lark-data/provider…
+
+
+--- ca-lark-tracking-api: AZURE_CLIENT_ID vs the identity's client ID (SHA-256, first 12 hex) ---
+WARNING: The behavior of this command has been altered by the following extension: containerapp
+app env AZURE_CLIENT_ID   e9c550f2a959
+identity clientId         e9c550f2a959
+match                     True
+--- active revision ---
+
+name                          createdUtc            imageTag health  traffic
+----                          ----------            -------- ------  -------
+ca-lark-tracking-api--ku1plzi 11/17/2026 1:55:34 PM 15df5aa  Healthy     100
+
+
+--- 5xx alert rule enabled ---
+true
+
+--- from the internet ---
+GET /readyz at 11-17-2026 02:15:49 PM EST -> HTTP 200: {"ready":true,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.5"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}}}
+GET /shipments/LRK100001 at 11-17-2026 02:18:18 PM EST -> HTTP 200: {"trackingNumber":"LRK100001","origin":"Larkspur HQ","destination":"North Depot","status":"Delivered","lastUpdatedUtc":"2026-11-13T13:51:11Z"}
+
+=== in-VNet DNS check ===
+execution      job-lark-dnscheck-7c238hc
+started        11-17-2026 02:18:18 PM EST
+status         Succeeded at 11-17-2026 02:19:19 PM EST
+--- LARK-DNS lines (from inside vnet-lark; healthy = 10.60.1.x) ---
+11-17-2026 02:19:00 PM  LARK-DNS sql-lark-….database.windows.net -> 10.60.1.5
+11-17-2026 02:19:00 PM  LARK-DNS kv-lark-….vault.azure.net -> 10.60.1.4
