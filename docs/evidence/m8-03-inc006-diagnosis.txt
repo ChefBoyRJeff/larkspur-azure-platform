@@ -1,0 +1,47 @@
+=== M8-03 INC-006 diagnosis, 11-17-2026 03:11:03 PM EST ===
+H1 network path blocked? The error says 'Connection was denied because Deny Public Network Access is set to Yes':
+   the request reached a SQL gateway and was refused by policy, not dropped. A blocked NSG path would time out. RULED OUT.
+
+--- H2: SQL server public network access (expect Disabled, unchanged) ---
+Disabled
+
+--- H3: SQL private endpoint (expect Approved, 10.60.1.5) ---
+connection state: Approved
+endpoint IP:      
+
+--- H4: A records in privatelink.database.windows.net (expect sql-lark-… -> 10.60.1.5) ---
+
+record     ipv4
+------     ----
+sql-lark-… 10.60.1.5
+
+
+--- H5: VNet links, both zones ---
+privatelink.database.windows.net : NO VNET LINKS
+privatelink.vaultcore.azure.net : link-vnet-lark -> vnet-lark (Completed)
+
+--- who and when: activity log, virtualNetworkLinks operations, last 2 hours (UTC; caller type only) ---
+
+timeUtc               operation                  status    zone
+-------               ---------                  ------    ----                  
+11/17/2026 6:33:52 PM virtualNetworkLinks/write  Started   privatelink.vaultcore…
+11/17/2026 6:33:52 PM virtualNetworkLinks/write  Started   privatelink.database.…
+11/17/2026 6:33:53 PM virtualNetworkLinks/write  Accepted  privatelink.database.…
+11/17/2026 6:33:53 PM virtualNetworkLinks/write  Accepted  privatelink.vaultcore…
+11/17/2026 6:34:23 PM virtualNetworkLinks/write  Succeeded privatelink.database.…
+11/17/2026 6:34:24 PM virtualNetworkLinks/write  Succeeded privatelink.vaultcore…
+11/17/2026 7:40:03 PM virtualNetworkLinks/delete Started   privatelink.database.…
+11/17/2026 7:40:04 PM virtualNetworkLinks/delete Accepted  privatelink.database.…
+11/17/2026 7:40:35 PM virtualNetworkLinks/delete Succeeded privatelink.database.…
+
+
+--- customer impact: ContainerAppHTTPLogs, ca-lark-tracking-api, since 02:30 PM EST (bins in UTC) ---
+
+TimeGenerated         total errors5xx
+-------------         ----- ---------
+11/17/2026 7:30:00 PM     1         0
+11/17/2026 7:35:00 PM    10         0
+11/17/2026 7:45:00 PM     1         1
+11/17/2026 7:50:00 PM    10        10
+
+

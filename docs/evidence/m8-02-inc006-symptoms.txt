@@ -1,0 +1,60 @@
+=== M8-02 INC-006 symptoms: SQL private DNS zone lost its VNet link ===
+link deleted in the portal (my note)       11-17-2026 02:34:23 PM EST
+
+--- symptoms from the internet (customer view) ---
+GET /readyz at 11-17-2026 02:34:23 PM EST -> HTTP 200: {"ready":true,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.5"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}}}
+
+--- 10 parallel shipment lookups (enough to trip the 5xx alert: 5 or more in 15 minutes) ---
+
+ n status finished
+ - ------ --------
+ 1    200 02:36:56 PM
+ 2    200 02:36:55 PM
+ 3    200 02:36:55 PM
+ 4    200 02:36:55 PM
+ 5    200 02:36:55 PM
+ 6    200 02:36:55 PM
+ 7    200 02:36:55 PM
+ 8    200 02:36:55 PM
+ 9    200 02:36:56 PM
+10    200 02:36:55 PM
+
+
+status counts: HTTP 200 x 10
+traffic done                               11-17-2026 02:36:56 PM EST
+
+=== M8-02 (continued): the first symptom check showed no failures, so verify the change itself ===
+checked at 11-17-2026 02:37:50 PM EST
+--- VNet links on privatelink.database.windows.net now (expect none) ---
+
+name           virtualNetworkLinkState provisioningState
+----           ----------------------- -----------------
+link-vnet-lark Completed               Succeeded
+
+
+--- activity log: virtualNetworkLinks operations in the last hour (UTC) ---
+
+
+=== in-VNet DNS check ===
+execution      job-lark-dnscheck-s2krefv
+started        11-17-2026 02:37:59 PM EST
+status         Succeeded at 11-17-2026 02:38:59 PM EST
+
+=== M8-02 (continued): the first symptom check showed no failures, so verify the change itself ===
+checked at 11-17-2026 02:41:22 PM EST
+--- VNet links on privatelink.database.windows.net now (expect none) ---
+
+--- activity log: virtualNetworkLinks operations in the last hour (UTC) ---
+
+
+=== in-VNet DNS check ===
+execution      job-lark-dnscheck-j3xzdga
+started        11-17-2026 02:41:28 PM EST
+status         Succeeded at 11-17-2026 02:42:38 PM EST
+--- LARK-DNS lines (from inside vnet-lark; healthy = 10.60.1.x) ---
+11-17-2026 02:42:14 PM  LARK-DNS sql-lark-….database.windows.net -> <public-ip>
+11-17-2026 02:42:14 PM  LARK-DNS kv-lark-….vault.azure.net -> 10.60.1.4
+
+--- symptoms from the internet, second attempt ---
+GET /readyz at 11-17-2026 02:49:13 PM EST -> HTTP 503: {"ready":false,"checks":{"sql_dns":{"ok":true,"address":"<public-ip>"},"sql":{"ok":false,"error":"ProgrammingError","detail":"('42000', '[42000] [Microsoft][ODBC Driver 18 for SQL Server][SQL Server]Reason: An instance-specific error occurred while establishing a connection to SQL Server. Connection was denied because Deny Public Network Access is set to Yes. For more information, see https://go.microsoft.com/fwlink/?linki"},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}}}
+status counts: HTTP 500 x 10  (last finished 02:52:22 PM)

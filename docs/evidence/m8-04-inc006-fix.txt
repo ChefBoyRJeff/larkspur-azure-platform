@@ -1,0 +1,45 @@
+=== M8-04 INC-006 fix and verification, 11-17-2026 03:58:21 PM EST ===
+fix: deploy run 44168734840 (pipeline, gh-lark-deploy). What-if showed '+ Create .../privatelink.database.windows.net/virtualNetworkLinks/link-vnet-lark';
+     the Key Vault zone's link was NoChange. Approval wait 03:23-03:41 PM; deploy step done 03:43:31 PM; smoke tests /readyz 200 with SQL at
+     10.60.1.5 at 03:47:13 PM; idempotency passed 03:47:34 PM. (Times from the GitHub Actions run log, read through the GitHub REST API.)
+
+--- VNet links, both zones ---
+privatelink.database.windows.net : link-vnet-lark -> vnet-lark (Completed)
+privatelink.vaultcore.azure.net : link-vnet-lark -> vnet-lark (Completed)
+
+--- activity log: virtualNetworkLinks on the SQL zone since the deploy (UTC; caller type only) ---
+
+timeUtc               operation                 status    caller
+-------               ---------                 ------    ------
+11/17/2026 8:42:06 PM virtualNetworkLinks/write Started   a service principal or…
+11/17/2026 8:42:07 PM virtualNetworkLinks/write Accepted  a service principal or…
+11/17/2026 8:42:37 PM virtualNetworkLinks/write Succeeded a service principal or…
+
+
+--- H3 completed: pe-lark-sql's NIC address (customDnsConfigs is empty when a DNS zone group is used) ---
+pe-lark-sql NIC private IP: 10.60.1.5
+
+=== in-VNet DNS check ===
+execution      job-lark-dnscheck-d8o7lkz
+started        11-17-2026 03:58:29 PM EST
+status         Succeeded at 11-17-2026 03:59:06 PM EST
+--- LARK-DNS lines (from inside vnet-lark; healthy = 10.60.1.x) ---
+11-17-2026 03:58:51 PM  LARK-DNS sql-lark-….database.windows.net -> 10.60.1.5
+11-17-2026 03:58:51 PM  LARK-DNS kv-lark-….vault.azure.net -> 10.60.1.4
+
+--- customer view: 10 parallel shipment lookups ---
+status counts: HTTP 200 x 10  (last finished 04:05:18 PM)
+
+--- INC-006 timeline (EST, 11-17-2026) ---
+02:40:35 PM  VNet link deleted from privatelink.database.windows.net (activity log, a user)
+02:42 PM     in-VNet DNS: SQL resolves to a public IP; Key Vault still 10.60.1.4
+02:49-02:52  11 x HTTP 5xx (/readyz 503: 'Deny Public Network Access is set to Yes'; /shipments 500)
+03:00 PM     alert-lark-api-5xx fired (email)
+03:11 PM     root cause confirmed: SQL zone has no VNet link; server, endpoint and A record unchanged
+03:21 PM     alert-lark-api-5xx auto-RESOLVED (email) while the link was still missing: no traffic, so no failures to count
+03:23 PM     fix started: deploy pipeline (waited for approval until 03:41 PM)
+03:43:31 PM  link recreated by the deploy
+03:47:13 PM  smoke tests: /readyz 200, SQL at 10.60.1.5
+impact window (break to fix)    62 min 56 s   (every request in it would fail; 11 were made)
+time to detect (first failure to alert)   about 8-11 min; (break to alert) 19 min 25 s, because no one called the API until 02:49
+time to recover (alert to fix)  43 min 31 s, of which 18 min was waiting for my approval
