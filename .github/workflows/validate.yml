@@ -53,6 +53,16 @@ jobs:
             az bicep build-params --file "$f" --stdout > /dev/null
           done
 
+      # INC-010: /readyz opens a SQL connection. Anything that calls it on a schedule (a job, a probe) keeps the free-tier
+      # database from auto-pausing and drains its monthly vCore-seconds. Probes and jobs must use /healthz.
+      - name: Guard - nothing in infra calls /readyz
+        run: |
+          if grep -rnE "/readyz'" infra/; then
+            echo "::error::A string in infra/ calls /readyz. Use /healthz for probes and keep-warm calls (INC-010)."
+            exit 1
+          fi
+          echo "No /readyz calls in infra/"
+
   whatif:
     name: What-if (app stack)
     needs: lint
