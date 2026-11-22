@@ -1,0 +1,23 @@
+=== M8-11 INC-009 setup: a 'tag cleanup' PR renames costCenter to cost-center, 11-22-2026 12:34:40 PM EST ===
+--- policy assignments that apply to rg-lark-app ---
+Name                     DisplayName                                                  EnforcementMode
+-----------------------  -----------------------------------------------------------  -----------------
+lark-require-costcenter  Larkspur: require costCenter tag on resources (rg-lark-app)  Default
+lark-allowed-locations   Larkspur: allowed locations (rg-lark-app)                    Default
+--- the change ---
+diff --git a/infra/app/main.bicepparam b/infra/app/main.bicepparam
+index 65ecc2c..552589c 100644
+--- a/infra/app/main.bicepparam
++++ b/infra/app/main.bicepparam
+@@ -3,7 +3,7 @@ param location = 'eastus'
+ param tags = {
+   project: 'larkspur-azure-platform'
+   company: 'Larkspur Logistics (fictional)'
+-  costCenter: 'CC-LARK-01'
++  'cost-center': 'CC-LARK-01'
+   environment: 'lab'
+   owner: 'platform'
+ }
+--- does it still compile? (what the PR lint job checks) ---
+az bicep build-params exit code: 0 (0 = compiles, so lint will not catch this)
+branch pushed at 11-22-2026 12:34:52 PM EST
