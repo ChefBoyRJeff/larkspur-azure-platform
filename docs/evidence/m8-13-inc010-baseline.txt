@@ -1,0 +1,48 @@
+=== M8-13 INC-010 baseline: free SQL database state before the keep-warm change, 11-22-2026 01:36:53 PM EST ===
+--- sqldb-lark-tracking (server name not printed) ---
+
+status                      : Paused
+sku                         : GP_S_Gen5 / 2 vCores max
+minCapacity                 : 0.5
+autoPauseDelay              : 60
+useFreeLimit                : True
+freeLimitExhaustionBehavior : AutoPause
+--- free_amount_remaining (vCore-seconds), hourly minimum, last 12 hours ---
+
+no free_amount_remaining data points in the last 12 hours
+--- the free-amount alert that should warn before the allowance runs out ---
+Name                        Enabled    Frequency    Window    Threshold    Operator
+--------------------------  ---------  -----------  --------  -----------  ----------
+alert-lark-sql-free-amount  True       PT1H         PT1H      10000.0      LessThan
+
+=== M8-13 (continued): does free_amount_remaining have any data? 11-22-2026 01:39:11 PM EST ===
+--- metric definitions Azure exposes for this database (free_*) ---
+Name                   Unit    PrimaryAggregation
+---------------------  ------  --------------------
+free_amount_remaining  Count   Minimum
+free_amount_consumed   Count   Maximum
+--- data points over the last 7 days (any of Average/Minimum/Maximum) ---
+
+metric                grain timeseries dataPoints lastTimeEst          lastMin  lastMax
+------                ----- ---------- ---------- -----------          -------  -------
+free_amount_remaining PT15M          1         35 11-22-2026 12:39 PM 83091.00 83336.00
+free_amount_remaining P1D            1          5 11-21-2026 01:39 PM 83091.00 85142.00
+free_amount_consumed  PT15M          1         35 11-22-2026 12:39 PM 16664.00 16909.00
+free_amount_consumed  P1D            1          5 11-21-2026 01:39 PM 14858.00 16909.00
+--- the alert rule: what it actually evaluates ---
+{
+  "aggregation": "Minimum",
+  "frequency": "PT1H",
+  "metric": "free_amount_remaining",
+  "operator": "LessThan",
+  "scopes": 1,
+  "threshold": 10000.0,
+  "window": "PT1H"
+}
+
+=== M8-13 (continued): baseline auto-pause with nothing calling the database, started 11-22-2026 01:54:37 PM EST ===
+last database use: 01:50:57 PM EST (deploy run 45056168295 smoke tests; migrate job just before)
+note: the first metrics query used --start-time without --end-time; az defaults --offset to 1 hour, so it read 01-02 AM. Always pass both.
+11-22-2026 01:54:39 PM  status=Online  (idle 3.7 min)
+11-22-2026 02:07:58 PM  status=Paused  (idle 17 min)
+RESULT: paused after 17 minutes idle (Microsoft: free tier pauses after 15 min of inactivity, plus 1-10 min pause latency; the resource reports autoPauseDelay 60)

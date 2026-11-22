@@ -1,0 +1,10 @@
+=== M8-16 INC-010 mitigation: delete job-lark-keepwarm, confirm the database pauses, 11-22-2026 02:55:19 PM EST ===
+diagnosis note (m8-15): the H1/H2 tables show times 5 hours late (07:14 PM = 02:14 PM EST); a converted DateTime was parsed again. Minute-of-hour alignment is unaffected.
+executions before mitigation: 9; last: job-lark-keepwarm-29922955 started 11-22-2026 02:55:00 PM EST, status Running
+deleting job-lark-keepwarm at 11-22-2026 02:55:21 PM EST (Owner, manual mitigation; the code fix follows in a PR)
+job-lark-keepwarm after delete: (none)  (expect none)
+jobs left in rg-lark-app: job-lark-drill, job-lark-migrate, job-lark-dnscheck
+--- database status every minute until Paused (up to 35 minutes) ---
+11-22-2026 02:55:49 PM  status=Online  (0.8 min since the last keep-warm start)
+11-22-2026 03:06:04 PM  status=Paused  (11.1 min since the last keep-warm start)
+RESULT: paused 11.1 min after the last keep-warm call (baseline m8-13: 17 min idle)
