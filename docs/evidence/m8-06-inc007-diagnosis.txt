@@ -1,0 +1,42 @@
+=== M8-06 INC-007 diagnosis, 11-22-2026 11:43:38 AM EST ===
+
+--- H1/H2: the refusal itself (fresh /readyz; caller IDs compared by SHA-256, never printed) ---
+HTTP 503; Key Vault error code: Forbidden
+H1 network: the vault answered with 'Forbidden' and named the caller, so the request reached it (a blocked path would be ForbiddenByConnection or a timeout). RULED OUT.
+caller oid    103155e8061f   id-lark-tracking-api principalId 103155e8061f   match True
+caller appid  e9c550f2a959   id-lark-tracking-api clientId    e9c550f2a959   match True
+H2 authentication: the token was accepted and identifies id-lark-tracking-api. RULED OUT.
+
+--- H3: does the secret exist? (ARM metadata read as Owner; no value is returned) ---
+carrier-api-key exists: enabled=True. RULED OUT (a missing secret is a 404 SecretNotFound, not a 403).
+
+--- H4: vault permission model ---
+enableRbacAuthorization: True (true = Azure RBAC decides; access policies are ignored). RULED OUT as a change.
+
+--- H5: id-lark-tracking-api role assignments now (baseline m8-01: Key Vault Secrets User on the vault) ---
+NONE
+
+--- role assignments that apply to the vault (including inherited; people masked) ---
+
+roleDefinitionName            principalType    principal       level
+------------------            -------------    ---------       -----
+Larkspur Data-Tier Integrator ServicePrincipal <guid>          inherited
+Larkspur Group Reader         ServicePrincipal <guid>          inherited
+Larkspur What-If Reader       ServicePrincipal <guid>          inherited
+Monitoring Contributor        Group            lark-ops        inherited
+Owner                         User             a user (masked) inherited
+Reader                        Group            lark-ops        inherited
+User Access Administrator     User             a user (masked) inherited
+Key Vault Secrets Officer     ServicePrincipal <guid>          this vault
+
+
+H5: no assignment gives id-lark-tracking-api 'Microsoft.KeyVault/vaults/secrets/getSecret/action' on this vault. CONFIRMED.
+
+--- who and when: activity log, roleAssignments on the vault, last 2 hours (UTC; caller type only) ---
+
+timeUtc               operation              status    scope     caller
+-------               ---------              ------    -----     ------
+11/22/2026 4:40:32 PM roleAssignments/delete Started   the vault a user (email masked)
+11/22/2026 4:40:33 PM roleAssignments/delete Succeeded the vault a user (email masked)
+
+

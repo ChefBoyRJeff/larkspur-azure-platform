@@ -1,0 +1,15 @@
+=== M8-05 INC-007 symptoms: id-lark-tracking-api lost its Key Vault role ===
+session: deploy run 45043923250 (11-22-2026 11:35 AM EST, image 15df5aa; SQL endpoint this session 10.60.1.4)
+role assignment removed in the portal (my note)   11-22-2026 11:41:21 AM EST
+
+--- confirm the change is in place: id-lark-tracking-api role assignments (all scopes) ---
+NONE (baseline m8-01: Key Vault Secrets User on the vault)
+
+--- /readyz every 30 s until Key Vault refuses (up to 20 min) ---
+11-22-2026 11:42:17 AM  HTTP 503  key_vault ok=False  error=HttpResponseError
+
+--- the full /readyz answer at that point ---
+{"ready":false,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.4"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":false,"error":"HttpResponseError","detail":"(Forbidden) Caller is not authorized to perform action on resource.\r\nIf role assignments, deny assignments or role definitions were changed recently, please observe propagation time.\r\nCaller: appid=<guid>;oid=<guid>;iss=https://sts.windows."}}}
+
+--- customer view: /shipments/LRK100001 ---
+11-22-2026 11:42:18 AM  HTTP 200: {"trackingNumber":"LRK100001","origin":"Larkspur HQ","destination":"North Depot","status":"Delivered","lastUpdatedUtc":"2026-11-13T13:51:11Z"}
