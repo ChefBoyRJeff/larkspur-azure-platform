@@ -3,7 +3,7 @@ param location = 'eastus'
 param tags = {
   project: 'larkspur-azure-platform'
   company: 'Larkspur Logistics (fictional)'
-  costCenter: 'CC-LARK-01'
+  'cost-center': 'CC-LARK-01'
   environment: 'lab'
   owner: 'platform'
 }
