@@ -1,0 +1,41 @@
+=== M8-14 INC-010 symptoms: free SQL database with the keep-warm job deployed, started 11-22-2026 02:19:11 PM EST ===
+change: PR #19 merged 02:09:08 PM EST; deploy run 45059165554 (smoke tests passed 02:15:32 PM; idempotency FAILED on job-lark-keepwarm: value (Modify))
+baseline (m8-13): with nothing calling it, the database paused after 17 minutes idle
+--- database status every minute for 30 minutes (a line is written when it changes) ---
+11-22-2026 02:19:16 PM  status=Online  (3.7 min since the last non-keep-warm call)
+11-22-2026 02:50:01 PM  final status=Online after 34.5 min (baseline paused at 17 min); paused at any point: False
+--- job-lark-keepwarm executions ---
+executions: 8
+
+execution                  startEst               status
+---------                  --------               ------
+job-lark-keepwarm-29922915 11-22-2026 02:15:00 PM Succeeded
+job-lark-keepwarm-29922920 11-22-2026 02:20:00 PM Succeeded
+job-lark-keepwarm-29922925 11-22-2026 02:25:00 PM Succeeded
+job-lark-keepwarm-29922930 11-22-2026 02:30:00 PM Succeeded
+job-lark-keepwarm-29922935 11-22-2026 02:35:00 PM Succeeded
+job-lark-keepwarm-29922940 11-22-2026 02:40:00 PM Succeeded
+job-lark-keepwarm-29922945 11-22-2026 02:45:00 PM Succeeded
+job-lark-keepwarm-29922950 11-22-2026 02:50:00 PM Running
+--- LARK-KEEPWARM lines (ContainerAppConsoleLogs, log-lark) ---
+log lines: 6
+11-22-2026 02:15:31 PM  LARK-KEEPWARM 200
+11-22-2026 02:20:26 PM  LARK-KEEPWARM 200
+11-22-2026 02:25:29 PM  LARK-KEEPWARM 200
+11-22-2026 02:30:25 PM  LARK-KEEPWARM 200
+11-22-2026 02:35:23 PM  LARK-KEEPWARM 200
+11-22-2026 02:41:50 PM  LARK-KEEPWARM 200
+--- free_amount_remaining (vCore-seconds), 15-minute minimum, last 3 hours ---
+
+slotEst                remaining
+-------                ---------
+11-22-2026 11:50:00 AM  84082.00
+11-22-2026 12:05:00 PM  83919.00
+11-22-2026 12:20:00 PM  83500.00
+11-22-2026 12:35:00 PM  83091.00
+11-22-2026 01:50:00 PM  82591.00
+11-22-2026 02:05:00 PM  82428.00
+11-22-2026 02:20:00 PM  81934.00
+11-22-2026 02:35:00 PM  81282.00
+burn: 2800 vCore-seconds over 2.75 h of reported slots = about 1018 vCore-seconds per online hour
+at that rate, the remaining 81282 would last about 3.3 days if the database never paused
