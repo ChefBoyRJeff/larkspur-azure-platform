@@ -5,16 +5,10 @@
 name: validate
 
 on:
+  # No paths filter: these jobs are required checks on main (INC-009). A required workflow skipped by path filtering
+  # stays "Pending" and blocks the PR, so validate runs on every pull request, docs-only ones included.
   pull_request:
     branches: [main]
-    paths:
-      - 'infra/**'
-      - 'identity/**'
-      - 'scripts/**'
-      - 'bicepconfig.json'
-      - '.github/workflows/validate.yml'
-      - '.github/workflows/deploy.yml'
-      - '.github/workflows/teardown.yml'
 
 permissions:
   contents: read
