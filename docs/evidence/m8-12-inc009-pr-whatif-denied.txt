@@ -1,0 +1,58 @@
+=== M8-12 INC-009: the PR what-if was denied by policy (PR #16, validate run 45050325834), 11-22-2026 12:38:26 PM EST ===
+--- validate run 45050325834 (read from the job log; GUIDs masked) ---
+Lint and build                        success  12:35:43 PM - 12:36:10 PM  (valid Bicep: lint cannot see policy)
+What-if (app stack)                   FAILURE  12:36:13 PM - 12:36:56 PM
+Guardrail - plan identity cannot deploy success  (gh-lark-plan still refused deployments/write)
+ERROR: InvalidTemplateDeployment - The template deployment failed with multiple errors.
+RequestDisallowedByPolicy - Resource 'pe-lark-sql' was disallowed by policy. Reasons: 'Every Larkspur resource needs a costCenter tag so its cost can be allocated.'
+RequestDisallowedByPolicy - Resource 'pe-lark-kv' was disallowed by policy. Reasons: 'Every Larkspur resource needs a costCenter tag so its cost can be allocated.'
+RequestDisallowedByPolicy - Resource 'ca-lark-tracking-api' was disallowed by policy. Reasons: 'Every Larkspur resource needs a costCenter tag so its cost can be allocated.'
+RequestDisallowedByPolicy - Resource 'cae-lark' was disallowed by policy. Reasons: 'Every Larkspur resource needs a costCenter tag so its cost can be allocated.'
+RequestDisallowedByPolicy - Resource 'nsg-lark-aca' was disallowed by policy. Reasons: 'Every Larkspur resource needs a costCenter tag so its cost can be allocated.'
+RequestDisallowedByPolicy - Resource 'nsg-lark-pe' was disallowed by policy. Reasons: 'Every Larkspur resource needs a costCenter tag so its cost can be allocated.'
+RequestDisallowedByPolicy - Resource 'vnet-lark' was disallowed by policy. Reasons: 'Every Larkspur resource needs a costCenter tag so its cost can be allocated.'
+RequestDisallowedByPolicy - Resource 'link-vnet-lark' was disallowed by policy. Reasons: 'Every Larkspur resource needs a costCenter tag so its cost can be allocated.'
+RequestDisallowedByPolicy - Resource 'link-vnet-lark' was disallowed by policy. Reasons: 'Every Larkspur resource needs a costCenter tag so its cost can be allocated.'
+not in the denial list: job-lark-migrate, job-lark-drill, the DNS check job, the 5xx alert rule (preflight is best-effort; reason for the jobs not confirmed)
+PR page: "Able to merge ... Some non-required checks" -> validate is advisory, not a required check
+--- activity log: Microsoft.Authorization/policies/deny/action since 12:30 PM EST ---
+deny events found: 0
+
+deployment history in rg-lark-app for 'pr-16': (none)  (expect none: what-if never creates a deployment, and preflight stopped before anything ran)
+ca-lark-tracking-api tags.costCenter is still present: True
+
+=== M8-12 (continued): every activity log event in rg-lark-app and rg-lark-data since 12:30 PM EST, queried 11-22-2026 12:39:38 PM EST ===
+events found: 22
+--- grouped by resource group, category, operation, caller, status ---
+
+rg           category       operation                                       caller          status    count first
+--           --------       ---------                                       ------          ------    ----- -----
+rg-lark-data Administrative Microsoft.Sql/servers/databases/write           other principal Succeeded     1 11-22-2026 12:32:15 PM
+rg-lark-app  Administrative Microsoft.Resources/deployments/validate/action gh-lark-plan    Started       1 11-22-2026 12:36:33 PM
+rg-lark-app  Administrative Microsoft.Resources/deployments/validate/action gh-lark-plan    Failed        1 11-22-2026 12:36:35 PM
+rg-lark-app  Administrative Microsoft.Resources/deployments/whatIf/action   gh-lark-plan    Started       1 11-22-2026 12:36:35 PM
+rg-lark-app  Administrative Microsoft.Resources/deployments/whatIf/action   gh-lark-plan    Accepted      1 11-22-2026 12:36:36 PM
+rg-lark-app  Policy         Microsoft.Authorization/policies/deny/action    gh-lark-plan    Failed       13 11-22-2026 12:36:37 PM
+rg-lark-data Policy         Microsoft.Authorization/policies/deny/action    gh-lark-plan    Failed        4 11-22-2026 12:36:37 PM
+--- any event whose category or operation mentions policy ---
+policy-related events: 17
+
+rg           timeEst                category operation                                    status caller       resource
+--           -------                -------- ---------                                    ------ ------       --------
+rg-lark-app  11-22-2026 12:36:37 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan nsg-lark-aca
+rg-lark-app  11-22-2026 12:36:37 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan ca-lark-tracking-api
+rg-lark-app  11-22-2026 12:36:37 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan pe-lark-kv
+rg-lark-app  11-22-2026 12:36:37 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan cae-lark
+rg-lark-app  11-22-2026 12:36:37 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan nsg-lark-pe
+rg-lark-data 11-22-2026 12:36:37 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan link-vnet-lark
+rg-lark-app  11-22-2026 12:36:37 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan vnet-lark
+rg-lark-data 11-22-2026 12:36:37 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan link-vnet-lark
+rg-lark-app  11-22-2026 12:36:37 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan pe-lark-sql
+rg-lark-app  11-22-2026 12:36:38 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan pe-lark-sql
+rg-lark-app  11-22-2026 12:36:38 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan nsg-lark-aca
+rg-lark-app  11-22-2026 12:36:38 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan nsg-lark-pe
+rg-lark-app  11-22-2026 12:36:38 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan vnet-lark
+rg-lark-app  11-22-2026 12:36:38 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan cae-lark
+rg-lark-data 11-22-2026 12:36:38 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan link-vnet-lark
+rg-lark-data 11-22-2026 12:36:38 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan link-vnet-lark
+rg-lark-app  11-22-2026 12:36:38 PM Policy   Microsoft.Authorization/policies/deny/action Failed gh-lark-plan pe-lark-kv
