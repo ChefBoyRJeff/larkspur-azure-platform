@@ -1,0 +1,61 @@
+=== M8-09 INC-008 diagnosis, 11-22-2026 12:02:20 PM EST ===
+H1 network/DNS: /readyz showed sql_dns 10.60.1.4 and no network error; the failure happens before any connection. RULED OUT.
+
+--- H2 authorization (INC-007 again?): id-lark-tracking-api role assignments ---
+  Key Vault Secrets User on vaults/kv-lark-…
+  The role is in place, and the error is CredentialUnavailableError (no token at all), not a 403. RULED OUT.
+
+WARNING: The behavior of this command has been altered by the following extension: containerapp
+--- H3 identity detached from the app? ---
+  attached: id-lark-tracking-api  RULED OUT.
+
+--- H4 the app asks for an identity it doesn't have: AZURE_CLIENT_ID now = id-lark-migrator ---
+  id-lark-migrator is not attached to ca-lark-tracking-api, so the platform can't issue a token for it. CONFIRMED.
+
+--- what changed between the two revisions (values hashed) ---
+  revision mode: Single
+  ca-lark-tracking-api--0000001: active=True traffic=100 health=Healthy running=RunningAtMaxScale image=15df5aa
+
+--- who and when: activity log, containerApps writes in rg-lark-app, last hour (UTC; caller type only) ---
+
+timeUtc               status    caller
+-------               ------    ------
+11/22/2026 4:32:47 PM Started   a service principal or identity
+11/22/2026 4:32:48 PM Accepted  a service principal or identity
+11/22/2026 4:33:03 PM Succeeded a service principal or identity
+11/22/2026 4:59:08 PM Started   a user (email masked)
+11/22/2026 4:59:09 PM Accepted  a user (email masked)
+
+
+--- would the pipeline's idempotency gate catch this? (local what-if of the app stack + the same filter rule as scripts/whatif-drift.jq) ---
+
+=== M8-09 (continued): revision diff with inactive revisions, and the what-if check, 11-22-2026 12:14:47 PM EST ===
+  ca-lark-tracking-api--7xecdm7: active=False traffic=0 createdUtc=11/22/2026 11:32:54
+  ca-lark-tracking-api--0000001: active=True traffic=100 createdUtc=11/22/2026 11:59:17
+  CHANGED AZURE_CLIENT_ID : id-lark-tracking-api -> id-lark-migrator
+  image changed: False
+
+--- local what-if of the app stack (same template and parameters as deploy.yml) ---
+  what-if exit code: 0
+  status: Succeeded; changes: 31
+  ca-lark-tracking-api entries: 1; changeType: Modify
+  every changed leaf on the container app:
+
+=== M8-09 (continued): what-if's raw view of ca-lark-tracking-api, client IDs replaced by labels, 11-22-2026 12:16:42 PM EST ===
+  delta JSON: 133 lines; lines around client IDs (8 before, 4 after):
+                "after": null,
+                "before": null,
+                "children": [
+                  {
+                    "after": null,
+                    "before": null,
+                    "children": [
+                      {
+                        "after": "[reference('/subscriptions/<sub>/resourceGroups/rg-lark-data/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-lark-tracking-api', '2023-01-31').clientId]",
+                        "before": "<CLIENT-ID of id-lark-migrator>",
+                        "children": null,
+                        "path": "value",
+                        "propertyChangeType": "Modify"
+    ...
+                      }
+    ...

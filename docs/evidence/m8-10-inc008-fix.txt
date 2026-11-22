@@ -1,0 +1,50 @@
+=== M8-10 INC-008 fix verified: pipeline redeploy restored AZURE_CLIENT_ID, 11-22-2026 12:26:53 PM EST ===
+--- ca-lark-tracking-api: AZURE_CLIENT_ID now (SHA-256, first 12 hex) ---
+app env AZURE_CLIENT_ID     e9c550f2a959  -> id-lark-tracking-api
+id-lark-tracking-api        e9c550f2a959
+id-lark-migrator            02355a18cf2e
+restored to the API identity (expect True): True
+--- revisions (all, oldest first) ---
+
+revision                      createdEst             active traffic health  imageTag                                 clientId
+--------                      ----------             ------ ------- ------  --------                                 --------
+ca-lark-tracking-api--7xecdm7 11-22-2026 11:32:54 AM  False       0 Healthy 15df5aa52615f1f436cf3973d1a3db28293199b6 id-lark-tracking-api
+ca-lark-tracking-api--0000001 11-22-2026 11:59:17 AM  False       0 Healthy 15df5aa52615f1f436cf3973d1a3db28293199b6 id-lark-migrator
+ca-lark-tracking-api--0000002 11-22-2026 12:19:43 PM   True     100 Healthy 15df5aa52615f1f436cf3973d1a3db28293199b6 id-lark-tracking-api
+exactly one active revision, 100% traffic, API identity (expect True): True
+--- activity log: Microsoft.App/containerApps/write on rg-lark-app since 11:30 AM EST ---
+
+caller                    status    count first                  last
+------                    ------    ----- -----                  ----
+gh-lark-deploy (pipeline) Started       1 11-22-2026 12:19:37 PM 11-22-2026 12:19:37 PM
+gh-lark-deploy (pipeline) Accepted      1 11-22-2026 12:19:38 PM 11-22-2026 12:19:38 PM
+gh-lark-deploy (pipeline) Succeeded     1 11-22-2026 12:19:53 PM 11-22-2026 12:19:53 PM
+--- from the internet ---
+GET /readyz at 11-22-2026 12:27:21 PM EST -> HTTP 200: {"ready":true,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.4"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}}}
+10 parallel GET /shipments/LRK100001 at 11-22-2026 12:27:25 PM EST -> HTTP 200 x 10
+--- deploy run 45048644241: pre-deploy what-if rows of shape <guid> => [reference()] ---
+  ca-lark-tracking-api  env[4] AZURE_CLIENT_ID  "<guid>" => [reference(id-lark-tracking-api).clientId]   <- the real drift
+  job-lark-drill        env[4]                  "<guid>" => [reference(...).clientId]                    <- noise
+  job-lark-migrate      env[4]                  "<guid>" => [reference(id-lark-migrator).clientId]       <- noise
+  job-lark-migrate      env[6]                  "<guid>" => [reference(id-lark-tracking-api).clientId]   <- noise
+  all four look identical: before is masked, after is an unresolved reference(); whatif-drift.jq drops all of them
+--- timeline (EST) ---
+11:59:08 AM  portal edit: containerApps/write by a user; revision --0000001 created 11:59:17 AM with AZURE_CLIENT_ID = id-lark-migrator
+12:00:39 PM  /shipments HTTP 500 x 10; /readyz 503 (CredentialUnavailableError for SQL and Key Vault)
+12:08 PM     5xx alert email received
+12:17:57 PM  fix: deploy run 45048644241 created (approved on production)
+12:20:28 PM  deploy step finished (AZURE_CLIENT_ID back to the reference)
+12:22:55 PM  smoke tests passed (/readyz 200, SQL at 10.60.1.4, Key Vault ok)
+12:23:14 PM  idempotency check passed
+RESULT: clientId restored True | single active revision True | /readyz 200 True | 10/10 lookups 200 True
+
+--- activity log re-run with --max-events 2000 (the first query returned only the newest 50 events, so the 11:59 AM portal write was cut off) ---
+events returned since 11:30 AM EST: 148; containerApps/write events: 8
+
+caller                    status    count first                  last
+------                    ------    ----- -----                  ----
+gh-lark-deploy (pipeline) Started       2 11-22-2026 11:32:47 AM 11-22-2026 12:19:37 PM
+gh-lark-deploy (pipeline) Accepted      2 11-22-2026 11:32:48 AM 11-22-2026 12:19:38 PM
+gh-lark-deploy (pipeline) Succeeded     2 11-22-2026 11:33:03 AM 11-22-2026 12:19:53 PM
+user (portal edit)        Started       1 11-22-2026 11:59:08 AM 11-22-2026 11:59:08 AM
+user (portal edit)        Accepted      1 11-22-2026 11:59:09 AM 11-22-2026 11:59:09 AM

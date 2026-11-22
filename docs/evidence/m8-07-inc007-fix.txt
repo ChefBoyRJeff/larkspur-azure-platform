@@ -1,12 +1,12 @@
 === M8-07 INC-007 fix: data-stack deploy behind the what-if gate, 11-22-2026 11:46:19 AM EST ===
 --- what-if (everything that is not NoChange/Ignore) ---
   Modify   /subscriptions/<sub>/resourceGroups/rg-lark-data/providers/Microsoft.Insights/actionGroups/ag-lark-ops : properties.emailReceivers  (documented noise)
-  Modify   /subscriptions/<sub>/resourceGroups/rg-lark-data/providers/Microsoft.Insights/workbooks/c1c02431-1bdb-5ffb-ae4b-a2b35e08fb50 : properties.serializedData  NOT NOISE
+  Modify   /subscriptions/<sub>/resourceGroups/rg-lark-data/providers/Microsoft.Insights/workbooks/<guid> : properties.serializedData  NOT NOISE
   Create   /subscriptions/<sub>/resourceGroups/rg-lark-data/providers/Microsoft.KeyVault/vaults/kv-lark-…/providers/Microsoft.Authorization/roleAssignments/<guid>
            roleDefinitionId ends 4633458b-17de-408a-b874-0445c86b69e6 (Key Vault Secrets User: True); principal -> id-lark-tracking-api: True
   Modify   /subscriptions/<sub>/resourceGroups/rg-lark-data/providers/Microsoft.KeyVault/vaults/kv-lark-…/providers/Microsoft.Authorization/roleAssignments/<guid> : properties.principalId, properties.principalType  (documented noise)
   NoChange: 11; Ignore: 3
-unexpected Modify: /subscriptions/<sub>/resourceGroups/rg-lark-data/providers/Microsoft.Insights/workbooks/c1c02431-1bdb-5ffb-ae4b-a2b35e08fb50
+unexpected Modify: /subscriptions/<sub>/resourceGroups/rg-lark-data/providers/Microsoft.Insights/workbooks/<guid>
 
 === M8-07 (continued): the gate stopped on an unrecognised workbook Modify; prove whether it's real drift, 11-22-2026 11:47:56 AM EST ===
 what-if workbook change: Modify; serializedData propertyChangeType=Create
