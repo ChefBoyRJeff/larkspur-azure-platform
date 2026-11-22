@@ -1,0 +1,23 @@
+=== M8-08 INC-008 symptoms: AZURE_CLIENT_ID changed in a portal edit ===
+portal edit deployed (my note)   11-22-2026 11:59:45 AM EST
+
+--- confirm the change is in place (values compared by SHA-256, never printed) ---
+WARNING: The behavior of this command has been altered by the following extension: containerapp
+app env AZURE_CLIENT_ID   02355a18cf2e
+id-lark-tracking-api      e9c550f2a959   match False   (baseline m8-01: e9c550f2a959, match True)
+id-lark-migrator          02355a18cf2e   match True
+identities attached to the app: id-lark-tracking-api
+--- revisions (active first) ---
+
+name                          active createdUtc             traffic health
+----                          ------ ----------             ------- ------
+ca-lark-tracking-api--7xecdm7   True 11/22/2026 11:32:54 AM       0 Healthy
+ca-lark-tracking-api--0000001   True 11/22/2026 11:59:17 AM     100 None
+
+
+--- symptoms from the internet ---
+11-22-2026 12:00:38 PM  /healthz -> HTTP 200: {"status":"ok"}
+11-22-2026 12:00:39 PM  /readyz  -> HTTP 503: {"ready":false,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.4"},"sql":{"ok":false,"error":"CredentialUnavailableError","detail":"App Service managed identity configuration not found in environment. invalid_scope"},"key_vault":{"ok":false,"error":"CredentialUnavailableError","detail":"App Service managed identity configuration not found in environment. invalid_scope"}}}
+
+--- 10 parallel shipment lookups (enough to trip the 5xx alert) ---
+status counts: HTTP 500 x 10  (last finished 12:00:39 PM)
