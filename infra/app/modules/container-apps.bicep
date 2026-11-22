@@ -384,6 +384,58 @@ resource dnsCheck 'Microsoft.App/jobs@2024-03-01' = {
   }
 }
 
+// Keep-warm: call /readyz every 5 minutes so the API is already running when someone uses it (avoids the ~2.5-minute
+// cold start after scale-to-zero).
+resource keepWarm 'Microsoft.App/jobs@2024-03-01' = {
+  name: 'job-lark-keepwarm'
+  location: location
+  tags: tags
+  properties: {
+    environmentId: environment.id
+    workloadProfileName: 'Consumption'
+    configuration: {
+      triggerType: 'Schedule'
+      replicaTimeout: 120
+      replicaRetryLimit: 0
+      scheduleTriggerConfig: {
+        cronExpression: '*/5 * * * *'
+        parallelism: 1
+        replicaCompletionCount: 1
+      }
+    }
+    template: {
+      containers: [
+        {
+          name: 'keepwarm'
+          image: 'mcr.microsoft.com/azurelinux/base/python:3.12'
+          command: [
+            'python3'
+            '-c'
+            '''
+import os, urllib.request, urllib.error
+url = os.environ['KEEPWARM_URL']
+try:
+    code = urllib.request.urlopen(url, timeout=100).status
+except urllib.error.HTTPError as e:
+    code = e.code
+print('LARK-KEEPWARM', code)
+'''
+          ]
+          env: [
+            {
+              name: 'KEEPWARM_URL'
+              value: 'https://${trackingApi.properties.configuration.ingress.fqdn}/readyz'
+            }
+          ]
+          resources: {
+            cpu: json('0.25')
+            memory: '0.5Gi'
+          }
+        }
+      ]
+    }
+  }
+}
 output environmentName string = environment.name
 output apiName string = trackingApi.name
 output apiFqdn string = trackingApi.properties.configuration.ingress.fqdn
