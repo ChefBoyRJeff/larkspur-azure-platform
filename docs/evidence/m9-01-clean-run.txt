@@ -1,0 +1,27 @@
+=== M9-01 clean-run proof: deploy main onto an empty app stack, verify, tear down; started 11-22-2026 08:47:25 PM EST ===
+origin/main at 6b43752 (PR #23 merge)
+--- before the deploy ---
+resources in rg-lark-app: 0  (expect 0)
+rg-lark-app-infra exists: false  (expect false)
+sqldb-lark-tracking status: Paused  (expect Paused)
+clean start confirmed
+--- deploy run 45096594360 (read from the GitHub run, times EST) ---
+created 08:48:04 PM; what-if: 16 to create, 13 to ignore; deploy step done 08:55:31 PM; migrate 08:57:17 PM
+smoke tests 08:57:25 PM (/healthz 200, /readyz 200 with SQL at 10.60.1.5); idempotency PASS 08:57:45 PM; total 9 min 41 s
+--- my checks, 11-22-2026 08:58:58 PM EST ---
+resources in rg-lark-app: 13
+rg-lark-app-infra exists: true  (expect true while a session runs)
+jobs: job-lark-dnscheck, job-lark-migrate, job-lark-drill  (expect migrate, drill, dnscheck; no keepwarm)
+api: minReplicas 1, running status Running, image tag 15df5aa
+GET /readyz -> 200: {"ready":true,"checks":{"sql_dns":{"ok":true,"address":"10.60.1.5"},"sql":{"ok":true,"shipments":5},"key_vault":{"ok":true,"secret":"carrier-api-key","present":true}}}
+GET /shipments/LRK100001 -> 200
+GET /shipments/LRK999999 -> 404
+GET /shipments/not-a-number -> 400
+expect: 200, 404, 400
+--- teardown run 45097633486 (read from the GitHub run, times EST) ---
+started 08:59:45 PM; finished 09:32:16 PM (32 min 31 s): "verified rg-lark-app is empty", "verified rg-lark-app-infra is gone"
+--- my checks after teardown, 11-22-2026 09:35:58 PM EST ---
+resources in rg-lark-app: 0  (expect 0)
+rg-lark-app-infra exists: false  (expect false)
+sqldb-lark-tracking status: Paused  (Paused, or Online until about 17 min after the last smoke test)
+RESULT: clean run from main PROVEN: empty -> deployed and verified -> empty

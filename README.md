@@ -1,7 +1,8 @@
 # Larkspur Logistics Azure Platform
 
-> **Status:** in progress. M0–M8 delivered; next is M9 (runbook, architecture diagram, cost report, interview guide).
-> See [docs/plan.md](docs/plan.md) for the full plan and acceptance criteria.
+> **Status:** complete. M0–M9 delivered and verified with evidence (11-12-2026 to 11-22-2026).
+> Start here: [runbook](docs/runbook.md) · [cost report](docs/cost-report.md) · [interview guide](docs/interview-guide.md) ·
+> [incident reports](docs/incidents/) · [plan and acceptance criteria](docs/plan.md).
 
 ## Scenario
 
@@ -14,6 +15,49 @@ single-subscription landing zone that I run with production practices. It is not
 landing zone architecture, and it is not a production system serving real customers.
 
 ## Architecture (current state)
+
+```mermaid
+flowchart LR
+  user["Customer / smoke tests"] -->|HTTPS| lb["Public IP + load balancer<br/>rg-lark-app-infra (managed)"]
+  subgraph gh["GitHub"]
+    pr["Pull request: lint, what-if, guardrail<br/>(required on main)"]
+    dep["deploy / teardown<br/>approval on production"]
+    img["GHCR image<br/>tagged by commit SHA"]
+  end
+  subgraph app["rg-lark-app · East US · rebuilt every session"]
+    subgraph vnet["vnet-lark 10.60.0.0/16"]
+      subgraph aca["snet-aca · cae-lark (Container Apps)"]
+        api["ca-lark-tracking-api<br/>1 replica, managed identity"]
+        jobs["jobs: migrate, dnscheck, drill"]
+      end
+      subgraph pe["snet-pe · NSG: only snet-aca → 1433/443"]
+        pesql["pe-lark-sql"]
+        pekv["pe-lark-kv"]
+      end
+    end
+    a5xx["alert-lark-api-5xx"]
+  end
+  subgraph data["rg-lark-data · persistent"]
+    sql[("SQL Database, free tier<br/>Central US, public access off")]
+    kv["Key Vault<br/>public access off"]
+    dns["Private DNS zones"]
+    ids["Managed identities"]
+    law["log-lark (Log Analytics)"]
+    ops["Action group, alerts, workbook"]
+  end
+  lb --> api
+  api --> pesql --> sql
+  api --> pekv --> kv
+  jobs --> pesql
+  api -. resolves .-> dns
+  aca -. logs .-> law
+  ids -. used by .-> api
+  img --> api
+  dep -->|"OIDC, gh-lark-deploy"| app
+  pr -->|"OIDC, gh-lark-plan (read + what-if)"| app
+```
+
+Detailed view with addresses:
 
 ```
   Internet ──HTTPS──▶ public IP (rg-lark-app-infra, managed by Container Apps)
@@ -84,6 +128,9 @@ scripts/
   Test-LarkPrivateDns.ps1      runs job-lark-dnscheck and shows what the app resolves from inside the VNet (INC-006)
 docs/
   plan.md                      plan, milestones, acceptance criteria, design changes
+  runbook.md                   start/end a session, health checks, triage by symptom, commands that bite
+  cost-report.md               actual cost vs the plan's estimates
+  interview-guide.md           how I walk through and defend the project
   incidents/                   incident reports (root cause, remediation, prevention)
   evidence/                    sanitized command output for every milestone
 ```
@@ -105,7 +152,7 @@ generated from the committed `*.example.bicepparam` files.
 | M6 Observability | ✅ Delivered 11-15-2026 | [`docs/evidence/m6-*`](docs/evidence/), [INC-005](docs/incidents/INC-005-5xx-metric-alert-did-not-fire.md) |
 | M7 Backup and recovery | ✅ Delivered 11-17-2026 | [`docs/evidence/m7-*`](docs/evidence/) |
 | M8 Operational incidents | ✅ Delivered 11-22-2026 | [`docs/evidence/m8-*`](docs/evidence/), [INC-006](docs/incidents/INC-006-sql-private-dns-link-deleted.md), [INC-007](docs/incidents/INC-007-api-identity-lost-key-vault-role.md), [INC-008](docs/incidents/INC-008-portal-edit-changed-api-client-id.md), [INC-009](docs/incidents/INC-009-policy-denied-pr-tag-rename.md), [INC-010](docs/incidents/INC-010-keepwarm-job-blocked-sql-auto-pause.md) |
-| M9 Deliverables | Not started | |
+| M9 Deliverables | ✅ Delivered 11-22-2026 | [runbook](docs/runbook.md), [cost report](docs/cost-report.md), [interview guide](docs/interview-guide.md), [`docs/evidence/m9-*`](docs/evidence/) |
 
 ### M0: Prerequisites
 
@@ -719,7 +766,49 @@ paid database tier where staying awake is fine); a scheduled drift check between
 resolve; an alert on the free database's burn rate instead of only its 10,000 floor; and Owner as a break-glass role
 with access reviews, not my daily account.
 
+### M9: Deliverables
+
+- **Runbook** ([docs/runbook.md](docs/runbook.md)): starting and ending a session, a health check, changing the data
+  stack behind its what-if gate, triage by symptom for every incident and drill, and the commands that caught me out.
+- **Architecture diagram:** the Mermaid diagram at the top of this README, next to the detailed address view.
+- **Cost report** ([docs/cost-report.md](docs/cost-report.md)): **$1.68** in actual charges for the whole project
+  (11-01 to 11-22-2026), every line matched to a design item; the only SQL charge was the M7 restored copy.
+- **Interview guide** ([docs/interview-guide.md](docs/interview-guide.md)): a 3–5 minute walkthrough, a 10-minute
+  deep dive and answers grounded in this repository.
+- **Clean-run proof:** a final deploy from `main` onto an empty `rg-lark-app`, smoke-tested and torn down
+  ([`m9-01`](docs/evidence/m9-01-clean-run.txt)).
+
+## Limitations and what I'd build next
+
+| Limitation | Why it's acceptable here | What I'd do |
+|---|---|---|
+| I approve my own deploys, and Owner is my daily account | One-person project | A second approver; Owner as a break-glass role with access reviews |
+| One environment | Cost: the stack only exists during a session | A non-production environment that deploys on merge |
+| No drift detection between deploys (INC-008) | The deploy repairs drift and its smoke tests catch the impact | A scheduled check comparing live values (such as `AZURE_CLIENT_ID`) with the expected ones |
+| The idempotency filter drops any value starting with `[reference(` (INC-008, INC-010) | Every dropped value is checked functionally by the smoke tests | Compare against resolved expected values instead of matching strings |
+| The free-amount alert fires only below 10,000 vCore-seconds (INC-010) | Sessions are short and the database pauses | A burn-rate alert (for example, Online for more than 2 hours) |
+| No outside-in availability test | A scheduled `/readyz` call would keep the free database awake (INC-006, INC-010) | A probe of `/healthz` from outside Azure, or a paid database tier |
+| Single revision mode, so a new revision serves customers at once (M7 Drill C, INC-008) | The smoke tests run within a minute | Multiple revision mode: smoke-test at 0% traffic, then shift |
+| Locally redundant backups, no zone redundancy, no WAF | Free tier and budget | Geo-redundant backups, zone redundancy, Front Door with WAF |
+| The data-stack what-if gate is a manual check | Changes there are rare and admin-only | Script it, including the workbook hash comparison |
+
+## Skills demonstrated
+
+| Area | Where | AZ-104 domain |
+|---|---|---|
+| Entra groups, RBAC, custom roles, managed identities, OIDC federation | M1, M4b, M5, INC-007, INC-008 | Manage Azure identities and governance |
+| Azure Policy, tags, locks, budgets | M1, M3, INC-002, INC-009 | Manage Azure identities and governance |
+| Backup and recovery: SQL point-in-time restore, Key Vault soft delete, release rollback | M7 | Monitor and maintain Azure resources |
+| SQL Database and Key Vault with Entra-only access | M3, M4b | (data services, beyond AZ-104's storage-account focus) |
+| Container Apps, jobs, revisions, scaling | M4a, M4b, M7, INC-010 | Deploy and manage Azure compute resources |
+| VNets, subnets, NSGs, private endpoints, private DNS | M2, M3, INC-006 | Implement and manage virtual networking |
+| Log Analytics, KQL, metric and log search alerts, workbooks, activity log | M6, M8 | Monitor and maintain Azure resources |
+| Bicep, what-if, GitHub Actions, required checks | M1–M9 | (beyond AZ-104: infrastructure as code and CI/CD) |
+| Incident response: hypotheses, evidence, root cause, prevention | INC-001 to INC-010 | (operations practice) |
+
 ## Cost
+
+Actual: **$1.68** from 11-01 to 11-22-2026 ([cost report](docs/cost-report.md)). Running costs by item:
 
 | Item | Running cost |
 |---|---|
