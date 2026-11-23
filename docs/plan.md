@@ -91,11 +91,12 @@ Every milestone includes portal work as well as Bicep/CLI, and saves sanitized e
 Each incident is handled the way an operations team would: alert or report, triage, diagnosis, fix, verification,
 then an incident report with root cause and prevention.
 
-1. Private DNS zone VNet link removed: app can't reach SQL.
-2. Managed identity's Key Vault role assignment removed: 403 from Key Vault.
-3. Bad revision deployed: roll back by shifting traffic to the previous revision.
-4. Policy denies a non-compliant deployment.
-5. SQL database won't auto-pause and starts consuming its free vCore-seconds.
+1. Private DNS zone VNet link removed: app can't reach SQL (INC-006).
+2. Managed identity's Key Vault role assignment removed: 403 from Key Vault (INC-007).
+3. ~~Bad revision deployed: roll back~~ (covered by M7 Drill C). Replaced by: a portal edit changes the API's
+   `AZURE_CLIENT_ID`, so it can't get a token (INC-008).
+4. Policy denies a non-compliant change from a pull request (INC-009).
+5. SQL database won't auto-pause and starts consuming its free vCore-seconds (INC-010).
 
 ## Cost
 
@@ -164,6 +165,9 @@ in Cost Analysis.
 | M7 | Restore command copies the live database's tags | Restores don't copy tags, and the `costCenter` policy denies untagged resources |
 | M7 | Rollback = redeploy the last good image tag through `deploy`, not reactivate a revision | In single-revision mode the old revision is deactivated; redeploying keeps `main`, the deployment and the idempotency gate as the source of truth |
 | M7 | `deploy` resolves the default image with `git log --first-parent` | app-image tags the merge commit; without `--first-parent`, git log returns the PR's own commit, which was never pushed |
+| M8 | Incident 3 changed from "bad revision rollback" to a portal configuration edit (INC-008) | M7 Drill C already proved the rollback; an authentication failure pairs with INC-007's authorization failure |
+| M8 | `validate` runs on every pull request and its three jobs are required checks on `main` (INC-009) | A failing what-if didn't block the merge. A required workflow skipped by a `paths` filter stays Pending, so the filter had to go first |
+| M8 | API `minReplicas: 1`; nothing in `infra/` may call `/readyz` (lint guard) (INC-010) | A keep-warm job calling `/readyz` kept the free database from auto-pausing; `minReplicas` keeps the API warm without a SQL call |
 
 ## Teardown
 

@@ -1,6 +1,6 @@
 # Larkspur Logistics Azure Platform
 
-> **Status:** in progress. M0–M7 delivered; next is M8 (operational incidents).
+> **Status:** in progress. M0–M8 delivered; next is M9 (runbook, architecture diagram, cost report, interview guide).
 > See [docs/plan.md](docs/plan.md) for the full plan and acceptance criteria.
 
 ## Scenario
@@ -20,7 +20,7 @@ landing zone architecture, and it is not a production system serving real custom
                            │
                           vnet-lark 10.60.0.0/16  (East US, rg-lark-app: rebuilt every session)
                           ├─ snet-aca 10.60.0.0/27   cae-lark (Container Apps, Consumption, external)
-                          │                          ├─ ca-lark-tracking-api  API, identity id-lark-tracking-api
+                          │                          ├─ ca-lark-tracking-api  API, identity id-lark-tracking-api, 1 replica always on
                           │                          ├─ job-lark-migrate      schema/seed/app user/secret, identity id-lark-migrator
                           │                          ├─ job-lark-dnscheck     resolves the data tier from inside the VNet
                           │                          └─ job-lark-drill        M7 recovery drills, identity id-lark-migrator
@@ -36,6 +36,7 @@ landing zone architecture, and it is not a production system serving real custom
   Image: ghcr.io/chefboyrjeff/larkspur-tracking-api (public GHCR package, built by GitHub Actions)
   Pipeline: GitHub Actions with OIDC (no secrets). Pull requests: validate as gh-lark-plan (read + what-if only).
             deploy / teardown: manual, behind my approval on the "production" environment, as gh-lark-deploy.
+            main: a ruleset requires a pull request and all three validate checks (INC-009).
     privatelink.database.windows.net   A sql-lark-… → 10.60.1.5   (written by the endpoint's DNS zone group)
     privatelink.vaultcore.azure.net    A kv-lark-…  → 10.60.1.4
 
@@ -61,7 +62,8 @@ app/
   Dockerfile                   Python 3.12 slim + ODBC Driver 18, non-root
 .github/workflows/
   app-image.yml                test, build and publish the image to GHCR
-  validate.yml                 pull requests: lint, type checks, what-if, guardrail (plan identity can't deploy)
+  validate.yml                 every pull request: lint, type checks, /readyz guard, what-if, guardrail (plan
+                               identity can't deploy); all three jobs are required checks on main
   deploy.yml                   start a session: verify image, deploy, migrate, smoke tests, idempotency (approval)
   teardown.yml                 end a session: remove the app stack and prove nothing is left billing (approval)
 identity/                      custom role definitions for the pipeline identities (JSON)
@@ -79,6 +81,7 @@ scripts/
   Initialize-LarkPipeline.ps1  one-time admin setup: custom roles, OIDC app registrations, role assignments
   whatif-drift.jq              idempotency filter: removes documented what-if noise, fails on anything else
   Start-LarkDrill.ps1          runs one recovery drill command in job-lark-drill and reads its log lines back
+  Test-LarkPrivateDns.ps1      runs job-lark-dnscheck and shows what the app resolves from inside the VNet (INC-006)
 docs/
   plan.md                      plan, milestones, acceptance criteria, design changes
   incidents/                   incident reports (root cause, remediation, prevention)
@@ -101,7 +104,8 @@ generated from the committed `*.example.bicepparam` files.
 | M5 Deployment pipeline | ✅ Delivered 11-13-2026 | [`docs/evidence/m5-*`](docs/evidence/), [INC-003](docs/incidents/INC-003-pipeline-deploy-linked-scope-and-pending-delete.md), [INC-004](docs/incidents/INC-004-teardown-false-positive-verification.md) |
 | M6 Observability | ✅ Delivered 11-15-2026 | [`docs/evidence/m6-*`](docs/evidence/), [INC-005](docs/incidents/INC-005-5xx-metric-alert-did-not-fire.md) |
 | M7 Backup and recovery | ✅ Delivered 11-17-2026 | [`docs/evidence/m7-*`](docs/evidence/) |
-| M8–M9 | Not started | |
+| M8 Operational incidents | ✅ Delivered 11-22-2026 | [`docs/evidence/m8-*`](docs/evidence/), [INC-006](docs/incidents/INC-006-sql-private-dns-link-deleted.md), [INC-007](docs/incidents/INC-007-api-identity-lost-key-vault-role.md), [INC-008](docs/incidents/INC-008-portal-edit-changed-api-client-id.md), [INC-009](docs/incidents/INC-009-policy-denied-pr-tag-rename.md), [INC-010](docs/incidents/INC-010-keepwarm-job-blocked-sql-auto-pause.md) |
+| M9 Deliverables | Not started | |
 
 ### M0: Prerequisites
 
@@ -299,7 +303,8 @@ Azure adds to every zone config, and a template can't declare them. They don't i
 **Key decisions**
 
 - **Consumption only, no environment private endpoint.** Apps scale to zero and stay inside the monthly free grant,
-  and there's no dedicated-plan "management hour" charge (M0 pricing).
+  and there's no dedicated-plan "management hour" charge (M0 pricing). (Since INC-010 the API keeps one replica
+  running during a session; the jobs still scale to zero.)
 - **I named the managed resource group.** A VNet-integrated environment creates its own group with a Standard Load
   Balancer and public IPs, billed separately from Container Apps. Under the default `ME_…` name my budget (which
   filters by resource group) wouldn't have seen that cost, so I set `infrastructureResourceGroup` to
@@ -487,8 +492,8 @@ prove the Container Apps managed group is gone (INC-004).
 | Teardown run 2 | ✅ `rg-lark-app` empty, `rg-lark-app-infra` gone, proven by a real answer ([`m5-09`](docs/evidence/m5-09-teardown-run2-verified.txt)) |
 | Log routing | ✅ rows in the resource-specific `ContainerAppConsoleLogs` table, after Azure's documented activation time of up to 90 minutes for a new diagnostic setting ([`m5-10`](docs/evidence/m5-10-log-routing.txt)) |
 
-**What I'd do differently in production:** branch protection on `main` (required pull request and required
-`validate` checks), a second approver instead of approving my own deploys, and a separate non-production
+**What I'd do differently in production:** branch protection on `main` (done in M8: since INC-009 a ruleset requires a
+pull request and all three `validate` checks), a second approver instead of approving my own deploys, and a separate non-production
 environment that deploys automatically on merge.
 
 ### M6: Observability
@@ -670,16 +675,60 @@ redundant, so geo-restore isn't available); a recovery runbook with pre-built co
 the RTO; and unit tests that run the API's SQL against a real database, which would have caught Drill C's bug at the
 pull request.
 
+### M8: Operational incidents
+
+I broke the platform five times on purpose and worked each one as on-call: symptoms first, then hypotheses ruled in
+or out with evidence, the root cause, a fix through the normal path (pipeline or PR, not a portal patch), verification,
+and an incident report with prevention. Each incident is a realistic mistake, the kind a well-meaning person makes.
+
+| Incident | What broke | Layer | How I found it | Impact | Fix | Report |
+|---|---|---|---|---|---|---|
+| INC-006 | The SQL private DNS zone lost its VNet link (a "cleanup" delete) | Network / DNS | 5xx alert email; `/readyz` showed SQL resolving to a public IP | Lookups failed for 62 min 56 s | Pipeline redeploy recreated the link | [INC-006](docs/incidents/INC-006-sql-private-dns-link-deleted.md) |
+| INC-007 | The API identity lost its Key Vault Secrets User role | Authorization (403 naming the caller) | `/readyz` 503 | `/readyz` 503 for 9 min 38 s; lookups unaffected | Data-stack deploy behind its what-if gate | [INC-007](docs/incidents/INC-007-api-identity-lost-key-vault-role.md) |
+| INC-008 | A portal edit pointed `AZURE_CLIENT_ID` at the migrator identity | Authentication (no token issued) | 5xx alert email; revision diff | Lookups 500 for at most 23 min 37 s | Pipeline redeploy | [INC-008](docs/incidents/INC-008-portal-edit-changed-api-client-id.md) |
+| INC-009 | A PR renamed the `costCenter` tag key | Governance (Azure Policy Deny) | The PR's what-if: `RequestDisallowedByPolicy` | None: never deployed, but the PR was mergeable with a red check | `validate` runs on every PR and is required by a ruleset on `main` | [INC-009](docs/incidents/INC-009-policy-denied-pr-tag-rename.md) |
+| INC-010 | A keep-warm job called `/readyz` every 5 minutes | Cost / capacity | Database status and metrics; no alert fired | The free database never paused: about 2.3 days to the monthly limit, then locked until the next month | Deleted the job (mitigation); removed it, API `minReplicas: 1`, a required lint guard against `/readyz` in `infra/` | [INC-010](docs/incidents/INC-010-keepwarm-job-blocked-sql-auto-pause.md) |
+
+**What the five have in common**
+
+- **The error type points at the layer.** A DNS answer outside `10.60.1.x` is the network; a 403 that names the
+  caller is authorization; `CredentialUnavailableError` with no token is authentication. INC-007 and INC-008 broke the
+  same dependencies and were told apart in minutes by the error alone.
+- **Fixes go through the same path as every other change.** Four of the five were fixed by a pipeline deploy or a PR,
+  so the fix got the same what-if, approval and smoke tests. The one manual step (deleting the keep-warm job) was a
+  mitigation, needed because the pipeline deploys in Incremental mode, which doesn't delete resources removed from
+  the template.
+- **My guardrails had gaps, and the incidents found them.** An alert that auto-resolves when traffic stops
+  (INC-006), what-if noise that hides real drift (INC-008), a check that didn't block the merge (INC-009), and a design
+  rule that lived only in a comment (INC-010). INC-006 even proposed a scheduled `/readyz` probe and warned it would
+  keep the free database awake; INC-010 measured that warning.
+- **Least privilege held for everyone but me.** `lark-dev` and `lark-ops` are Reader; every break needed my Owner
+  account. In production, Owner would be a break-glass role.
+
+**Measured along the way**
+
+| Measurement | Result |
+|---|---|
+| RBAC propagation (INC-007) | Removal effective within 1 min 44 s; the new grant within 26 s |
+| 5xx alert latency | About 7–11 minutes after the first failures; it auto-resolves when traffic stops, even if the cause remains |
+| Policy in the PR what-if (INC-009) | The read-only plan identity's what-if is denied by preflight; denials reach the activity log about 2 minutes later |
+| Free SQL auto-pause (INC-010) | 15–17 minutes after the last use, even though the resource reports `autoPauseDelay: 60` |
+
+**What I'd do differently in production:** an outside-in availability test that doesn't touch the database (or a
+paid database tier where staying awake is fine); a scheduled drift check between deploys for values what-if can't
+resolve; an alert on the free database's burn rate instead of only its 10,000 floor; and Owner as a break-glass role
+with access reviews, not my daily account.
+
 ## Cost
 
 | Item | Running cost |
 |---|---|
-| SQL database (free tier, AutoPause at the limit) | $0 |
+| SQL database (free tier, AutoPause at the limit) | $0; pauses about 15–17 minutes after its last use (measured in INC-010). 80,050 of 100,000 vCore-seconds left on 11-22-2026 |
 | Key Vault (idle) | ~$0 |
 | Private DNS zones (2, persistent) | ~$1.26/month |
 | Private endpoints (2) | ~$0.01/hr each, only while a session is running |
 | Container Apps environment infrastructure (load balancer + 2 public IPs) | ~$0.035–0.04/hr (estimate), only while a session is running |
-| Container Apps usage | within the monthly free grant (scale to zero) |
+| Container Apps usage | expected within the monthly free grant: jobs scale to zero, the API keeps 1 replica (0.5 vCPU, 1 GiB) only while a session is running (INC-010); to confirm in Cost Analysis in M9 |
 | Container image (public GHCR package) | $0 |
 | Managed identities | $0 |
 | Log Analytics | within the free ingestion allowance; 0.1 GB/day cap |
